@@ -68,11 +68,13 @@
     "@types/node": "^26.5.1",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/tsconfig": "^0.9.1",
+    "chart.js": "^4.5.1",
     "sass": "^1.104.0",
     "typescript": "~5.9.3",
     "vite": "^7.3.6",
     "vite-plugin-dts": "^5.1.0",
     "vue": "^3.5.42",
+    "vue-chartjs": "^5.3.4",
     "vue-tsc": "^3.3.11"
   }
 }
