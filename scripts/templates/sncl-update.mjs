@@ -11,6 +11,7 @@
  *   node sncl-update.mjs <组件库仓库路径>    临时指定组件库位置
  *   node sncl-update.mjs --pack             先让组件库仓库打包（自动判定版本），再安装
  *   node sncl-update.mjs --no-touch         直投模式，不改本项目的 package.json
+ *   node sncl-update.mjs --no-docs          不生成 AI 组件库资料（sn-components-docs/）
  *   node sncl-update.mjs --check            只比对版本，不做任何改动
  *
  * 你可以直接改下面的 LIB_PATH，也可以每次用命令行参数传。
@@ -82,6 +83,7 @@ async function main() {
   const argv = process.argv.slice(2)
   const packFirst = argv.includes("--pack")
   const noTouch = argv.includes("--no-touch")
+const noDocs = argv.includes("--no-docs")
   const checkOnly = argv.includes("--check")
   const pathArg = argv.find((a) => !a.startsWith("--")) || LIB_PATH
 
@@ -127,34 +129,21 @@ async function main() {
   if (checkOnly) { console.log(""); return }
 
   // ---- 3. 安装 ----
-  const libsDir = join(HERE, "libs")
-  if (!noTouch) {
-    const { mkdirSync, copyFileSync } = await import("node:fs")
-    mkdirSync(libsDir, { recursive: true })
-    const dest = join(libsDir, tgz.split(/[\\/]/).pop())
-    copyFileSync(tgz, dest)
-    log.ok(`已拷贝 tarball → ${dest}`)
-    log.info("执行 npm install…")
-    const code = await run("npm", ["install", `./libs/${tgz.split(/[\\/]/).pop()}`, "--loglevel=error"], HERE)
-    if (code !== 0) { log.err("npm install 失败"); process.exit(1) }
-    log.ok("安装完成")
-  }
-  else {
-    log.info("直投模式：解包到 node_modules（不改 package.json）")
-    const code = await run("node", [scriptPath, "install", HERE, "--no-touch"], libDir)
-    if (code !== 0) { log.err("直投失败"); process.exit(1) }
-  }
+  // 统一委托给组件库仓库的 release.mjs install：
+  // 它已包含「依赖模式 / 直投模式」两条路径，以及安装后的 typecheck 校验与 AI 文档生成，
+  // 这里不再重复实现，避免两边行为漂移。
+  const args = [scriptPath, "install", HERE]
+  if (noTouch) args.push("--no-touch")
+  if (noDocs) args.push("--no-docs")
+  log.info(noTouch ? "直投模式：解包到 node_modules（不改 package.json）" : "依赖模式：拷贝到 libs/ 并 npm install")
+  const code = await run("node", args, libDir)
+  if (code !== 0) { log.err("安装失败"); process.exit(1) }
 
-  // ---- 4. 校验 ----
-  const pkg = JSON.parse(readFileSync(join(HERE, "package.json"), "utf8"))
-  if (pkg.scripts?.typecheck) {
-    log.info("执行 typecheck 验证…")
-    const code = await run("npm", ["run", "typecheck"], HERE)
-    if (code !== 0) { log.warn("typecheck 未通过，请检查"); process.exit(1) }
-    log.ok("typecheck 通过")
-  }
-
+  // ---- 4. 收尾 ----
+  // typecheck 与文档生成都已在 release.mjs install 内完成，这里只做结果确认。
   log.ok(c.bold(`升级完成：${current ?? "（未安装）"} → ${incoming}`))
+  console.log("")
+  console.log(`${c.cyan("ℹ")} AI 组件库资料见 ${c.bold("sn-components-docs/")}（USAGE.md / AGENTS.sn-components.md / api.json）`)
   console.log("")
 }
 

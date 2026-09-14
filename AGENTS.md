@@ -34,7 +34,7 @@ npm run verify           # ★ 一键全跑：typecheck ×2 + lint + test + publ
 npm run release          # 菜单：打包 / 版本变化打包 / 安装到其他项目 / 查看历史
 npm run pack:lib         # = release.mjs pack
 npm run bump:lib         # = release.mjs bump（自动判定 patch/minor/major）
-npm run install:to       # = release.mjs install <目标项目> [--no-touch]
+npm run install:to       # = release.mjs install <目标项目> [--no-touch] [--no-docs]
 npm run status           # 查看已产出的 tarball / 目标项目 / 发布历史
 ```
 
@@ -287,6 +287,32 @@ npm run release        # 或 pack:lib / bump:lib / install:to
 tarball、记住的目标项目、发布历史、版本判定基线都在此目录，已在 `.gitignore` 中忽略。
 **不要**把它加进版本库。
 
+### 6. 安装时生成的 AI 文档：数据必须机械提取，不手写
+
+`install:to` 装完包后会在目标项目生成 `sn-components-docs/`（USAGE.md / sn-components.agents.md /
+api.json），供 AI 在目标项目里查组件用法。
+
+> 规则片段刻意命名为 `sn-components.agents.md`（单点、不以 `AGENTS` 开头）：
+> 曾用名 `AGENTS.sn-components.md` 与目标项目自己的 `AGENTS.md` 同前缀且含两个点，
+> 实测在 VS Code 里双击会「找不到该文件、无法打开编辑器」。**不要再改回多点名。**
+
+**硬规则**：
+
+- **api.json 的 props / emits / 取值一律从 `.d.ts` 机械提取**（`scripts/lib/docs.mjs`），
+  **禁止手写**任何组件的 API 字段 —— 手写必然与真实 API 漂移，而这份文档正是用来
+  「防止 AI 猜 props」的，漂移即失去意义。
+- 唯一允许手写的是使用约束与易错写法，集中在 `scripts/data/component-notes.mjs`。
+  新增条目必须来自**真实踩过的坑**，并在本文「已知踩坑清单」里有对应记载。
+- **优先读目标项目已安装包的 `.d.ts`**，保证文档与实际装到的版本一致，而非与本仓库源码一致。
+- 生成时机在**安装后校验通过之后** —— 包在对方项目跑不起来就不该投放文档。
+- 生成物**只新增、不改目标项目任何已有文件**（不代改 `AGENTS.md` / `main.ts`），
+  手动步骤由脚本打印提示。
+
+> 改动 `docs.mjs` 的解析逻辑后，务必重新校验「api.json 与 .d.ts 逐项一致」
+> （52 组件 / 550 props / 102 emits）—— 解析器很容易在
+> 「带引号的事件名 `"update:modelValue"`」「箭头函数里的 `=>` 被误判为泛型闭合」
+> 这类边界上静默出错。
+
 ---
 
 ## 已知踩坑清单（不要再犯）
@@ -362,6 +388,7 @@ tarball、记住的目标项目、发布历史、版本判定基线都在此目�
 11. 改完必须跑通 `npm run verify` 与 `npm run build`（或 `build:lib`），**不以「应该没问题」交付**。
 12. **图标数据必须走裁切子集**，全量 mdi 只能动态 import（详见「图标体积护栏」）。
 13. **测试文件放仓库根 `tests/`**，不放 `src/components/`（否则破坏「整目录复制」）。
+14. **安装时生成的 `api.json` 必须从 `.d.ts` 机械提取**，禁止手写组件 API（详见「安装时生成的 AI 文档」）。
 
 ---
 
@@ -440,6 +467,8 @@ scripts/lib/version.mjs         # 版本自动判定（分析 git 变更，取�
 scripts/lib/verify.mjs          # 打包前后四道校验（含依赖边界 + 图标体积预算）
 scripts/lib/prune-icons.mjs     # 按 icons.ts 裁切 mdi 图标数据（★ 体积关键）
 scripts/lib/install.mjs         # 两种安装模式 + 安装后校验
+scripts/lib/docs.mjs            # 从 .d.ts 提取 52 个组件 API → 生成 AI 文档三件套
+scripts/data/component-notes.mjs # ★ 文档生成的**唯一手写数据源**（使用约束 + 易错写法）
 scripts/templates/sncl-update.mjs # 目标项目侧一键升级脚本（模板）
 ```
 

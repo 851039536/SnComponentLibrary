@@ -11,6 +11,7 @@
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs"
 import { basename, join } from "node:path"
+import { generateDocs, printManualSteps } from "./docs.mjs"
 import { capture, c, humanSize, log, run } from "./util.mjs"
 
 /** 本库的包名 */
@@ -56,7 +57,7 @@ export async function tarballVersion(tgzPath) {
  * 模式 A：拷贝 tarball 到目标项目 libs/ 并 npm i
  * @returns {Promise<boolean>}
  */
-export async function installAsDependency(targetDir, tgzPath) {
+export async function installAsDependency(targetDir, tgzPath, opts = {}) {
   const libsDir = join(targetDir, "libs")
   mkdirSync(libsDir, { recursive: true })
   const dest = join(libsDir, basename(tgzPath))
@@ -71,6 +72,12 @@ export async function installAsDependency(targetDir, tgzPath) {
     return false
   }
   log.ok("安装完成（已写入目标项目 package.json）")
+
+  // 安装成功后投放 AI 文档（改 opts.noDocs 可跳过）
+  if (!opts.noDocs) {
+    const r = generateDocs(targetDir)
+    if (r.ok) printManualSteps(targetDir, r.entryPath)
+  }
   return true
 }
 
@@ -83,7 +90,7 @@ export async function installAsDependency(targetDir, tgzPath) {
  *
  * @returns {Promise<boolean>}
  */
-export async function installDirect(targetDir, tgzPath) {
+export async function installDirect(targetDir, tgzPath, opts = {}) {
   const nmDir = join(targetDir, "node_modules")
   if (!existsSync(nmDir)) {
     log.err("目标项目没有 node_modules/，请先在该项目执行 npm install")
@@ -140,6 +147,12 @@ export async function installDirect(targetDir, tgzPath) {
   log.ok(`已直投到 ${c.cyan(destDir)}`)
 
   log.warn("直投模式不改目标项目 package.json；对方再跑 npm install 时可能被覆盖，需重新投递。")
+
+  // 安装成功后投放 AI 文档（改 opts.noDocs 可跳过）
+  if (!opts.noDocs) {
+    const r = generateDocs(targetDir)
+    if (r.ok) printManualSteps(targetDir, r.entryPath)
+  }
   return true
 }
 

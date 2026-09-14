@@ -103,6 +103,58 @@ npm run install:to -- "D:\proj\myapp" --no-touch
 >    若先解包再装依赖，手工放入的本库会被 npm 删掉（这是实测踩到的坑）。
 > 2. 对方再执行 `npm install` 时可能覆盖直投结果，需要重新投递。
 
+### 3.1 安装时顺带投放「AI 组件库资料」（默认开启）
+
+装完包后，脚本会向目标项目生成 `sn-components-docs/`（**只新增，不改对方任何已有文件**）：
+
+| 文件 | 作用 |
+|---|---|
+| `USAGE.md` | 用法指南：三步接入、6 种常用写法、组件速查表、使用约束、易错写法对照 |
+| `sn-components.agents.md` | 给 AI 的规则片段（含硬规则与易错表），供目标项目 `AGENTS.md` 引用 |
+| `api.json` | **52 个组件的结构化 API**（props / 类型 / 取值枚举 / emits / slots / 中文说明） |
+
+**为什么需要它**：装完包后，目标项目里能查到的只有埋得很深的 README 与零散的 `.d.ts`，
+AI 写代码时只能**猜 props** —— 而本库已证实「猜 props 不报错，只会静默渲染错」
+（如 `Button` 无 `label` 属性、`Badge` 用 `warning` 非 `warn`、`Dialog` 的 `topright` 无连字符）。
+有了 `api.json`，AI 可先查再写。
+
+**数据可信度**：`api.json` 的 props / emits / 取值**全部从 `.d.ts` 机械提取**，
+非手写。已实测校验：52 个组件的 **550 个 props** 与 **102 个 emits** 与 `.d.ts` 逐项一致。
+唯一手写的是「易错写法」与「使用约束」，集中在 `scripts/data/component-notes.mjs`
+（每条都来自真实踩过的坑）。
+
+**只读哪一个**：优先读目标项目**已安装包**的 `.d.ts`，
+因此文档内容与「实际装到的版本」一致，而非与本仓库源码一致。
+
+**投放时机**：在**安装后校验通过之后**。若包在对方项目里跑不起来，
+就不生成文档 —— 避免给 AI 留下「照这份文档写」的错误依据。
+
+**安装输出会打印还需手动完成的 2 步**（脚本刻意不代改已有文件）：
+
+```
+还需你手动完成 2 步（脚本不改动已有文件）：
+  1) 在 src/renderer/src/main.ts 中加入：
+       import "sn-component-library/style.css"
+  2) 在本项目 AGENTS.md 中加一行引用，让 AI 自动读到规则：
+       组件用法见 sn-components-docs/sn-components.agents.md（完整 API 见 api.json）
+```
+
+> 入口文件路径由脚本自动探测（依次找 `src/renderer/src/main.ts` / `src/main.ts` /
+> `src/index.ts` / `main.ts`）。
+>
+> **为什么规则片段不叫 `AGENTS.xxx.md`**：曾用过 `AGENTS.sn-components.md`，
+> 实测在 VS Code 里双击会提示「找不到该文件，无法打开编辑器」——
+> 它既与目标项目自己的 `AGENTS.md` 同前缀，又是**多点**文件名
+> （部分工具按第一个点取扩展名，得到 `.sn-components.md` 这种未知类型）。
+> 改名为单点的 `sn-components.agents.md` 后不再有歧义。
+
+**安全行为**：
+
+- `--no-docs` 可完全跳过文档生成；
+- 二次安装时，若某文件被手工改过（`.md` 的标记注释被删、或 `.json` 缺 `generatedBy` 字段），
+  该文件**跳过覆盖**并告警，其余文件正常更新；
+- 生成物只落在 `sn-components-docs/`，**不改动**目标项目的 `AGENTS.md`、`main.ts`、`package.json`（依赖除外）。
+
 ### 4. 查看状态 / 发布历史
 
 ```bash
@@ -125,11 +177,15 @@ cp scripts/templates/sncl-update.mjs  /path/to/target-project/
 #    默认值 ../SnComponentLibrary 适用于两个项目同级的情况
 
 # 3. 之后在目标项目里
-node sncl-update.mjs            # 拉最新 tarball 并安装 + typecheck 校验
+node sncl-update.mjs            # 拉最新 tarball 并安装 + typecheck 校验 + 刷新 AI 文档
 node sncl-update.mjs --pack     # 先让本仓库自动打包（自动判定版本），再安装
 node sncl-update.mjs --check    # 只比对版本，不做任何改动
 node sncl-update.mjs --no-touch # 直投模式，不改本项目的 package.json
+node sncl-update.mjs --no-docs  # 不生成 sn-components-docs/
 ```
+
+> 模板本身只做「找包 + 比对版本 + 展示」，实际安装统一委托给本仓库的
+> `release.mjs install`，因此两条路径的行为（含文档生成、安装后校验）不会漂移。
 
 ---
 
@@ -139,11 +195,11 @@ node sncl-update.mjs --no-touch # 直投模式，不改本项目的 package.json
 node scripts/release.mjs                     # 交互式菜单
 node scripts/release.mjs pack                # 功能 1
 node scripts/release.mjs bump [patch|minor|major]
-node scripts/release.mjs install <目标项目> [--no-touch]
+node scripts/release.mjs install <目标项目> [--no-touch] [--no-docs]
 node scripts/release.mjs status              # 功能 4
 ```
 
-`install` 在 CLI 模式下**不会**交互提问（自动取最新 tarball、默认依赖模式），
+`install` 在 CLI 模式下**不会**交互提问（自动取最新 tarball、默认依赖模式、默认生成文档），
 方便写进 CI 或快捷方式。
 
 ---
@@ -157,7 +213,10 @@ scripts/
 │   ├── util.mjs             # 交互提问、着色输出、命令执行、状态持久化、项目扫描
 │   ├── version.mjs          # 版本自动判定（分析 git 变更）与 bump
 │   ├── verify.mjs           # 打包前后四道校验
-│   └── install.mjs          # 两种安装模式 + 安装后校验
+│   ├── install.mjs          # 两种安装模式 + 安装后校验
+│   └── docs.mjs             # 从 .d.ts 提取 52 个组件 API，生成 AI 文档三件套
+├── data/
+│   └── component-notes.mjs  # ★ 唯一手写数据：使用约束与易错写法（其余全部机械提取）
 └── templates/
     └── sncl-update.mjs      # 目标项目侧一键升级脚本（模板，需拷到目标项目）
 ```
@@ -188,3 +247,18 @@ scripts/
 **Q：能推到 npm registry 吗？**
 本套脚本只做本地 tarball 分发，不碰 registry。要公开发布需自行
 `npm publish`（注意先把 registry 从国内镜像切回 `registry.npmjs.org`，镜像通常是只读的）。
+
+**Q：目标项目里 AI 还是写错组件 props？**
+确认两件事：① 目标项目 `AGENTS.md` 里引用了规则片段
+（`sn-components-docs/sn-components.agents.md`，或指向 `sn-components-docs/USAGE.md`），
+否则 AI 不会主动去读；
+② 直接告诉 AI「先读 `sn-components-docs/api.json` 确认 props，不要猜」。
+
+**Q：文档里的组件数/版本对不上？**
+`api.json` 优先读**目标项目已安装包**的 `.d.ts`。若目标项目装了旧版，文档就反映旧版
+—— 这正是期望行为（文档与实际可用的 API 一致）。升级包后重跑安装即可刷新。
+
+**Q：想改「易错写法」或「使用约束」这两张表？**
+改 `scripts/data/component-notes.mjs`（这是唯一手写数据源），然后重跑安装。
+不要去改目标项目里生成的文件 —— 它们带「勿手改」标记，且下次安装会覆盖
+（手改过的会被跳过并告警）。

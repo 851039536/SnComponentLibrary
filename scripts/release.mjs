@@ -14,12 +14,13 @@
  *   node scripts/release.mjs pack            # 同功能 1
  *   node scripts/release.mjs bump            # 同功能 2（自动判定档位）
  *   node scripts/release.mjs bump minor      # 指定档位
- *   node scripts/release.mjs install <目标项目路径> [--no-touch]
+ *   node scripts/release.mjs install <目标项目路径> [--no-touch] [--no-docs]
  *   node scripts/release.mjs history         # 同功能 4
  */
 
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs"
 import { basename, join, resolve } from "node:path"
+import { generateDocs, printManualSteps } from "./lib/docs.mjs"
 import { installAsDependency, installDirect, installedVersion, tarballVersion, verifyInTarget } from "./lib/install.mjs"
 import {
   addHistory, ask, c, choose, closeRl, confirm, humanSize, indent,
@@ -95,7 +96,7 @@ function usage() {
     "  node scripts/release.mjs                      交互式菜单",
     "  node scripts/release.mjs pack                 自动打包",
     "  node scripts/release.mjs bump [patch|minor|major]  自动/指定档位打包",
-    "  node scripts/release.mjs install <目标项目> [--no-touch]",
+    "  node scripts/release.mjs install <目标项目> [--no-touch] [--no-docs]",
     "  node scripts/release.mjs history              查看状态与历史",
   ].join("\n")
 }
@@ -230,6 +231,7 @@ async function doPack(state, { bump, level }) {
 
 async function doInstall(state, rest, { nonInteractive = false } = {}) {
   const noTouch = rest.includes("--no-touch")
+  const noDocs = rest.includes("--no-docs")
   const pathArg = rest.find((a) => !a.startsWith("--"))
 
   // ---------- 1. 先有包 ----------
@@ -281,18 +283,31 @@ async function doInstall(state, rest, { nonInteractive = false } = {}) {
     }
   }
 
-  // ---------- 5. 执行 ----------
+  // ---------- 5. 执行安装（先不生成文档，等校验通过再投放） ----------
   log.step("安装到目标项目")
   const ok = mode === "dep"
-    ? await installAsDependency(targetDir, tgzPath)
-    : await installDirect(targetDir, tgzPath)
+    ? await installAsDependency(targetDir, tgzPath, { noDocs: true })
+    : await installDirect(targetDir, tgzPath, { noDocs: true })
   if (!ok) return false
 
   // ---------- 6. 安装后校验 ----------
   log.step("安装后校验")
-  await verifyInTarget(targetDir)
+  const verified = await verifyInTarget(targetDir)
 
-  // ---------- 7. 记录 ----------
+  // ---------- 7. 校验通过后才投放 AI 文档 ----------
+  // 顺序有意为之：若包在对方项目里跑不起来，就不该给 AI 留下「照这份文档写」的依据。
+  if (noDocs) {
+    log.info("已按 --no-docs 跳过文档生成")
+  }
+  else if (verified) {
+    const r = generateDocs(targetDir)
+    if (r.ok) printManualSteps(targetDir, r.entryPath)
+  }
+  else {
+    log.warn("安装后校验未通过，已跳过文档生成（修好后再跑一次安装即可）")
+  }
+
+  // ---------- 8. 记录 ----------
   const entry = state.history.find((h) => h.tarball === tgzPath)
   if (entry) {
     entry.targets = [...(entry.targets ?? []), targetDir]
