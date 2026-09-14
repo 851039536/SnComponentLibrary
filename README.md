@@ -38,6 +38,15 @@ npm run build:lib          # 产出 dist-lib/（JS + .d.ts + style.css）
 npm pack                   # 产出 sn-component-library-1.0.0.tgz
 ```
 
+> 💡 以上三步（含打包前四道校验、版本自动判定、以及直接装到目标项目）
+> 已封装成交互式脚本，**推荐直接用**：
+>
+> ```bash
+> npm run release          # 交互式菜单：打包 / 版本变化打包 / 安装到其他项目 / 查看历史
+> ```
+>
+> 详见 [`scripts/README.md`](./scripts/README.md)。
+
 **第 2 步：在目标项目中安装**
 
 ```bash
@@ -56,6 +65,67 @@ npm i sn-component-library
 ```bash
 npm i vue@^3.5.0
 ```
+
+#### 不用 registry：tarball 拷贝分发（离线 / 内网 / 同事之间传）
+
+完全不需要 `npm publish`，也不需要登录 npm 账号。**已实测通过**的流程：
+
+**① 在组件库仓库打出 tarball**
+
+```bash
+cd SnComponentLibrary
+npm install
+npm run build:lib      # 先构建，产物在 dist-lib/
+npm pack               # 产出 sn-component-library-1.0.0.tgz（约 870KB）
+```
+
+**② 把这个 .tgz 拷给对方**（U 盘、共享盘、IM、内网文件服务器都行）
+
+**③ 在目标项目里安装**
+
+```bash
+# 建议放到项目内的 libs/ 目录再安装，这样路径跟着仓库走，换机器也能装
+mkdir libs
+cp /path/to/sn-component-library-1.0.0.tgz libs/
+npm i ./libs/sn-component-library-1.0.0.tgz
+```
+
+装完后 `package.json` 会记录为 `"sn-component-library": "file:libs/sn-component-library-1.0.0.tgz"`。
+
+**④ 更新到新版本**
+
+```bash
+# 组件库侧：改完代码后 bump 版本再打包
+npm version patch --no-git-tag-version   # 1.0.0 -> 1.0.1
+npm run build:lib && npm pack
+
+# 目标项目侧：换掉 libs/ 里的 tgz，重新安装
+npm i ./libs/sn-component-library-1.0.1.tgz
+```
+
+> ⚠️ **改完组件库务必 bump 版本号**。相同版本号、相同文件名的 tarball 覆盖后，
+> npm 可能因缓存而沿用旧内容（虽然实测 npm 12 能识别 `changed 1 package`，
+> 但依赖这个行为不可靠）。bump 版本是唯一稳妥的更新方式 —— 换了文件名，
+> npm 一定重新解包。
+
+> ⚠️ `file:` 路径是**相对目标项目**解析的（`file:libs/...` 而非绝对路径）。
+> 因此把 .tgz 放进项目内的 `libs/` 并提交到版本库，团队成员 clone 后
+> `npm install` 即可复现，不会因各自机器上的绝对路径不同而失败。
+> 但注意：这样会把约 870KB 的二进制文件提交进仓库。
+
+**几种分发方式对比**
+
+| 方式 | 需要 registry | 需要登录 | 适合 |
+|---|---|---|---|
+| `npm pack` + 拷 .tgz | 否 | 否 | **离线 / 内网 / 临时分发（推荐）** |
+| `npm i file:/path/to/SnComponentLibrary` | 否 | 否 | 本机开发联调，改完组件库重装即生效 |
+| 私有 registry（Verdaccio / Nexus 等） | 是 | 是 | 团队长期使用、需要版本管理 |
+| 公开发布 npmjs | 是 | 是 | 开源项目 |
+
+> 补充：本机 npm 若指向国内镜像（`npm config get registry` 显示
+> `registry.npmmirror.com` 之类），该镜像**只读**，`npm publish` 会被拒绝。
+> 若要公开发布需先切回 `https://registry.npmjs.org`。但按上面的 tarball 方式
+> 分发则完全不受影响 —— 这也是它更省事的原因之一。
 
 **第 3 步：引入样式并开始使用**
 

@@ -7,3 +7,7 @@ dist-ssr
 .vite
 *.tsbuildinfo
 *.tgz
+
+# 发布助手的工作目录：tarball 产物、记住的目标项目、发布历史
+# 均为本机数据，不应提交（用 scripts/release.mjs 重新生成即可）
+.release/
