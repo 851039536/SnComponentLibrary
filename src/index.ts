@@ -4,8 +4,19 @@
  * 设计取舍：
  * - **只导出 52 个公开组件**（`components/*.vue` 根级），不导出各私有子目录
  *   （`select/`、`datePicker/` 等属内部实现，导出会锁死内部结构）。
- * - 全部使用**具名导出**且不产生副作用聚合，配合打包器的 tree-shaking，
- *   使用方 `import { Button } from "sn-component-library"` 时未用到的组件不会进产物。
+ * - 全部使用**具名导出**且不产生副作用聚合，为打包器的 tree-shaking 提供前提条件。
+ *
+ * ⚠️ 关于 tree-shaking 的**实际效果**（勿轻信「未用到的组件不会进产物」）：
+ *   具名导出只是必要条件，**充分条件**是产物保留模块结构。当前 `build:lib` 用 Vite
+ *   的默认库模式，产出的是**单文件 bundle**（`dist-lib/index.js`），未开启
+ *   `preserveModules`，且 `package.json` 的 `exports` 只暴露 `.` 与 `./chart` 两个入口。
+ *   因此使用方 `import { Button } from "sn-component-library"` 实际会加载整个 bundle
+ *   —— 未用到的组件**不会**被剔除。
+ *
+ *   若日后确实需要按需引入，方案是给 `build:lib` 加 `output.preserveModules`
+ *   并补齐 `exports` 子路径；但那会与「私有子目录不导出」（硬规则 3）产生耦合，
+ *   需连同 `scripts/lib/verify.mjs` 的产物校验一并评估，不要只改一半。
+ *
  * - 额外导出 `kit/` 里的公共能力（主题、图标表、格式化工具），供使用方定制。
  *
  * 注意：CSS 不在此处 import。组件样式随各自 `.vue` 的 <style> 块编译进产物，

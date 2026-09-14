@@ -10,8 +10,9 @@
 | `icons.ts` | 图标表**真源**（`FEATURE_ICONS` / `COMMON_ICONS` / `getIconConfig()` / `IconKey` 类型），零外部依赖 | `src/config/icons.ts` 是它的 `export *` 转发壳，48 处既有引用路径不变 |
 | `variables.scss` | 设计 Token **真源**（`$color-*` / `$font-*` / `$radius-*` / `$spacing-*`） | `src/_variables.scss` 是它的 `@forward` 转发壳，336 处既有引用路径不变 |
 | `theme.ts` | 默认主题注入：宿主（思源或目标项目）**未定义** `--b3-theme-*` 时才注入一套明暗变量；三层保险（检测 / `@layer` / `prepend`）保证不污染宿主主题 | 思源内为 no-op |
-| `iconify.ts` | mdi 图标数据离线注册（`addCollection`），由 `IconWrapper.vue` 副作用导入触发 | 与 `src/utils/iconifySetup.ts` 并存（后者额外注册 ph 图标集，供其它 feature 使用） |
+| `iconify.ts` | mdi 图标数据离线注册（`addCollection`），由 `IconWrapper.vue` 副作用导入触发。优先加载裁切子集，子集缺失时动态回退全量 | 与 `src/utils/iconifySetup.ts` 并存（后者额外注册 ph 图标集，供其它 feature 使用） |
 | `format.ts` | 组件库自用的纯格式化函数（当前仅 `formatFileSize`，供 `FileUpload` 使用）。内聚到此以切断对宿主 `@/utils/format` 的导入 | 与 `src/utils/format.ts` 的同名函数实现保持一致 |
+| `mdi-subset.json` | **构建生成物**（非真源，已 gitignore）：按 `icons.ts` 裁切出的 mdi 子集，由 `scripts/lib/prune-icons.mjs` 生成 | 仅本仓库构建时存在；复制源码到第三方项目时缺失，`iconify.ts` 会自动回退全量 |
 
 ## 约束
 
@@ -22,6 +23,10 @@
    显式扩展名引用，避免依赖解析器的 partial 回退行为。
 4. `theme.ts` 由 48 个公开组件以 `import "./kit/theme"` 副作用导入触发；新增公开组件时
    记得补这一行（无 `<script>` 的组件需补一个最小 script 块）。
+5. **`mdi-subset.json` 是生成物**：不要手工编辑、不要提交版本库。
+   全量 mdi 有 7638 个图标（约 2.8 MB）而本库只用 201 个，裁切后子集仅约 52 KB。
+   `iconify.ts` 里对**全量数据**必须用动态 `import()` —— 改回顶层静态 import 会让
+   主入口从约 420 KB 涨到约 3.4 MB，且不会有任何报错。详见 `AGENTS.md` 的「图标体积护栏」。
 
 ## 目标项目如何定制主题
 

@@ -11,3 +11,8 @@ dist-ssr
 # 发布助手的工作目录：tarball 产物、记住的目标项目、发布历史
 # 均为本机数据，不应提交（用 scripts/release.mjs 重新生成即可）
 .release/
+
+# 图标裁切生成物：由 scripts/lib/prune-icons.mjs 在 build:lib 前生成。
+# 它是**构建产物**而非真源（真源是 src/components/kit/icons.ts），
+# 且缺失时 kit/iconify.ts 会自动回退到全量 mdi，故不入版本库。
+src/components/kit/mdi-subset.json

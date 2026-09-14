@@ -1,0 +1,66 @@
+name: CI
+
+# 目的：把 AGENTS.md 里「改完必须跑通 typecheck 与 build」这条人工纪律
+# 变成机器强制。本仓库此前**没有任何 CI**，52 个组件全靠人工点检，
+# 而图标/体积这类问题既无类型错误也无运行时报错，只靠肉眼极易漏过。
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      # ---- 1. 类型检查（演示页 + 组件库两套 tsconfig） ----
+      - name: 类型检查（演示页）
+        run: npm run typecheck
+
+      - name: 类型检查（组件库）
+        run: npm run typecheck:lib
+
+      # ---- 2. Lint —— 其中最关键的是「组件内部零别名」规则 ----
+      - name: Lint
+        run: npm run lint
+
+      # ---- 3. 单元测试（含图标真源完整性、体积护栏） ----
+      - name: 单元测试
+        run: npm run test
+
+      # ---- 4. 两套构建都要过（AGENTS.md：改构建配置必须两套都验证） ----
+      - name: 构建演示页
+        run: npm run build
+
+      - name: 构建组件库
+        run: npm run build:lib
+
+      # ---- 5. 产物语义 + 体积预算 ----
+      #
+      # 这一步是防「图标数据退回全量」的关键：全量内联会让主入口从 ~420 KB
+      # 涨到 ~3.4 MB，而**没有任何类型错误或运行时报错**，唯一症状就是体积。
+      # verify.mjs 会做传递闭包分析并断言体积/图标数在预算内。
+      - name: 校验产物（依赖边界 + 体积预算）
+        run: node -e "
+          import('./scripts/lib/verify.mjs').then(async (m) => {
+            const a = m.checkArtifacts();
+            const b = m.checkBundleSemantics();
+            if (!a || !b) process.exit(1);
+          })
+          "
+
+      # ---- 6. 包元数据（exports / types / files 解析正确性） ----
+      - name: publint
+        run: npm run publint

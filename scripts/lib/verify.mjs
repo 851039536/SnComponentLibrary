@@ -22,6 +22,22 @@ const REQUIRED_ARTIFACTS = [
 ]
 
 /**
+ * 产物体积/图标数预算。
+ *
+ * 这两个数字是**回归护栏**，不是性能目标：
+ *   - 图标裁切后主入口约 420 KB（内联 200 余个图标）；
+ *   - 退回全量 mdi 会变成约 3.4 MB（内联 7638 个图标）。
+ * 预算取在两者之间，任何一侧的明显回归都会让校验失败。
+ * 若因正当理由（新增组件、新增图标）需要上调，请一并确认没有夹带全量图标数据。
+ */
+const ICON_BUDGET = {
+  /** 主入口内联图标数上限（正常 ~201） */
+  maxIcons: 1200,
+  /** 主入口体积上限（正常 ~420 KB；全量回退约 3.4 MB） */
+  maxIndexBytes: 900 * 1024,
+}
+
+/**
  * 从 tarball 内容清单里找出必需文件的缺失项。
  * @param {string[]} fileList package/dist-lib/... 形式的路径列表
  */
@@ -140,17 +156,81 @@ export function checkBundleSemantics() {
     }
   }
 
-  // ---- 3. 图标数据必须内联（否则断网时图标空白） ----
+  // ---- 3. 图标数据必须内联且有界（离线可用 + 体积预算） ----
+  //
+  // 历史教训：起初只检查 `includes("mdi:")` —— 该判断即使图标数据被裁到 1 个
+  // 或者反过来整包 7638 个全部内联，都会通过，完全无法防回归。
+  // 实测全量内联会让主入口从 ~420 KB 涨到 ~3.4 MB（89% 是永不使用的图标），
+  // 而且**没有任何类型错误或运行时报错**，唯一症状就是体积。
+  //
+  // ⚠️ 关键：图标计数**只看 index.js 自身**，不能把 import 闭包全部拼进来。
+  // 原因：kit/iconify.ts 的回退分支会**动态** import 全量 mdi，Vite 会把它拆成
+  // 独立的 `icons-*.js` chunk。该 chunk 属于闭包（能被闭包遍历找到），但正常
+  // 构建路径下永远不会被加载 —— 若把它算进来，就会把「回退能力」误判成
+  // 「已退回全量」，导致误报（本检查初版就踩了这个坑，实测报出 7839 个）。
   const indexCode = readFileSync(indexPath, "utf8")
-      + closure
-        .filter((r) => r !== "index.js")
-        .map((r) => { try { return readFileSync(join(outDir, r), "utf8") } catch { return "" } })
-        .join("")
+
   if (!indexCode.includes("mdi:")) {
     log.warn("主入口未内联 mdi 图标数据 —— 断网环境下图标可能空白")
+    ok = false
   }
   else {
-    log.ok("mdi 图标数据已内联（离线可用）")
+    // 统计主入口内联的图标条目数：正常应为 200 余个。
+    // 注意用 `"body":"` 精确匹配图标定义，避免把别处的 "body" 字样计入。
+    const bodyCount = (indexCode.match(/"body":/g) || []).length
+    const indexSize = statSync(indexPath).size
+
+    // 回退 chunk（全量 mdi）应存在但**不被静态引用**：存在即说明回退能力还在。
+    const lazyIconChunks = [...new Set(
+      (indexCode.match(/["'][^"']*icons-[A-Za-z0-9_-]+\.js["']/g) || [])
+        .map((s) => s.slice(1, -1)),
+    )]
+
+    if (bodyCount > ICON_BUDGET.maxIcons) {
+      log.err(`主入口内联了 ${bodyCount} 个图标（预算上限 ${ICON_BUDGET.maxIcons} 个）——`
+        + "很可能退回了全量 mdi 图标集。")
+      log.plain(c.gray("    修复：确认 src/components/kit/mdi-subset.json 已生成，"
+        + "且 kit/iconify.ts 没有把整包数据静态 import。"))
+      log.plain(c.gray("    重新生成：node scripts/lib/prune-icons.mjs"))
+      ok = false
+    }
+    else if (indexSize > ICON_BUDGET.maxIndexBytes) {
+      log.err(`主入口体积 ${humanSize(indexSize)} 超出预算 ${humanSize(ICON_BUDGET.maxIndexBytes)}。`)
+      log.plain(c.gray("    常见原因：图标数据退回全量内联，或误引入了重量级依赖。"))
+      ok = false
+    }
+    else {
+      log.ok(`mdi 图标数据已内联（离线可用）：${bodyCount} 个图标，`
+        + `主入口 ${humanSize(indexSize)}（预算 ${humanSize(ICON_BUDGET.maxIndexBytes)}）`)
+
+      if (lazyIconChunks.length > 0) {
+        // 子集缺失时仍有全量回退，且被拆成独立 chunk —— 必须确认它是**按需**加载。
+        const staticRef = closure.some((rel) => {
+          if (!rel.startsWith("icons-")) return false
+          return new RegExp(`from\\s+["']\\./${rel.replace(".", "\\.")}["']`).test(indexCode)
+        })
+        if (staticRef) {
+          log.err("全量 mdi 回退 chunk 被**静态**引用 —— 全量数据会无条件进入产物！")
+          log.plain(c.gray("    kit/iconify.ts 里对 @iconify-json/mdi 必须用动态 import()。"))
+          ok = false
+        }
+        else {
+          log.ok(`全量 mdi 回退 chunk 未被静态引用（按需加载）：${lazyIconChunks.join(", ")}`)
+        }
+      }
+      else {
+        // 正常路径：子集存在，且回退说明符是变量拼接（不可静态分析），
+        // 因此打包器**完全不会**产出全量 chunk —— 使用方 dist 里不会多出
+        // 一个约 2.9 MB 却永不加载的文件。回退改为运行期从 @iconify-json/mdi 解析。
+        const hasVarSpecifier = /fullSetSpecifier\s*=/.test(indexCode)
+        if (hasVarSpecifier) {
+          log.ok("全量 mdi 回退为运行期按需解析（未产出无用 chunk，使用方产物更干净）")
+        }
+        else {
+          log.warn("未检出全量 mdi 回退逻辑 —— 确认「整目录复制」交付线是否仍可用")
+        }
+      }
+    }
   }
 
   return ok

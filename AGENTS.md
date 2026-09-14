@@ -16,11 +16,19 @@ npm run build            # 构建演示页到 dist/
 npm run preview          # 预览演示页构建产物
 
 # 组件库（npm 包）
-npm run build:lib        # 构建 npm 包到 dist-lib/（双入口 + .d.ts）
+npm run build:lib        # 构建 npm 包到 dist-lib/（构建前自动裁切图标数据）
+npm run icons:prune      # 单独重新生成图标裁切子集
 
 # 类型检查
 npm run typecheck        # 演示页 + 组件库（tsconfig.json）
 npm run typecheck:lib    # 库构建专用（tsconfig.lib.json）
+
+# 质量检查
+npm test                 # 单元测试（vitest，用例在 tests/）
+npm run test:watch       # 单元测试（watch）
+npm run lint             # ESLint（含「组件内部零别名」强制规则）
+npm run publint          # 包元数据（exports / types / files）校验
+npm run verify           # ★ 一键全跑：typecheck ×2 + lint + test + publint
 
 # 发布 / 分发（交互式菜单）
 npm run release          # 菜单：打包 / 版本变化打包 / 安装到其他项目 / 查看历史
@@ -30,8 +38,11 @@ npm run install:to       # = release.mjs install <目标项目> [--no-touch]
 npm run status           # 查看已产出的 tarball / 目标项目 / 发布历史
 ```
 
-> **验证责任**：改完代码必须自行跑通 `npm run typecheck` 与 `npm run build`（或 `build:lib`）。
+> **验证责任**：改完代码必须自行跑通 `npm run verify`，以及 `npm run build`（或 `build:lib`）。
 > 不允许把「未验证」的改动交付，也不允许用「应该没问题」替代实际运行结果。
+>
+> CI（`.github/workflows/ci.yml`）会在 PR 上执行同一套检查。**不要让 CI 变成唯一发现问题的
+> 地方** —— 本地跑一遍通常只要十几秒。
 
 ---
 
@@ -77,8 +88,9 @@ src/
 | `icons.ts` | 图标表**真源**（`IconKey` / `getIconConfig` / `FEATURE_ICONS` / `COMMON_ICONS`） |
 | `variables.scss` | 设计 Token **真源**（`$color-*` / `$font-*` / `$radius-*` / `$spacing-*`） |
 | `theme.ts` | 默认主题注入（宿主未定义 `--b3-theme-*` 时才注入） |
-| `iconify.ts` | mdi 图标离线注册（不请求任何 CDN） |
+| `iconify.ts` | mdi 图标离线注册（不请求任何 CDN）；优先加载裁切子集，缺失时回退全量 |
 | `format.ts` | 组件库自用工具（`formatFileSize`） |
+| `mdi-subset.json` | **构建生成物**（非真源）：`scripts/lib/prune-icons.mjs` 产出，已 gitignore |
 
 **硬规则**：
 1. **本仓库没有转发壳**。源仓库存在 `src/_variables.scss`、`src/config/icons.ts` 两个转发壳，
@@ -86,6 +98,36 @@ src/
 2. `kit/variables.scss` **故意不带下划线前缀**，组件以 `@use '../kit/variables.scss'`（带扩展名）引用。
    **不要改名、不要加下划线**，否则 Sass partial 回退解析会失效。
 3. 新增图标 / Token **改 `kit/` 里的真源文件**，不要在别处另建图标表或变量表。
+4. **`mdi-subset.json` 是生成物，不要手工编辑、不要提交**。它是按 `icons.ts` 裁切出来的
+   mdi 子集，由 `npm run build:lib` 自动重新生成。
+
+### 图标体积护栏（重要，别踩）
+
+全量 mdi 有 **7638** 个图标（约 2.8 MB），本库只用到 **201** 个。
+`kit/iconify.ts` 因此**只静态引入裁切子集**，全量数据放在**动态 `import()` 的回退分支**里。
+
+**绝对不要**把全量数据改回顶层静态 import：
+
+```ts
+// ✗ 错误：全量数据会无条件进入产物，主入口从 ~420 KB 涨到 ~3.4 MB
+import mdiIcons from "@iconify-json/mdi/icons.json"
+addCollection(mdiIcons)
+
+// ✓ 正确：见 kit/iconify.ts 现有实现（glob 取子集 + 动态 import 回退）
+```
+
+这个坑**没有类型错误、没有运行时报错**，唯一症状就是体积 —— 所以三道校验守着它：
+
+| 校验 | 位置 | 断言 |
+|---|---|---|
+| 图标数上界 | `verify.mjs` 校验 3/4 | 主入口内联图标数 ≤ `ICON_BUDGET.maxIcons` |
+| 主入口体积 | 同上 | `index.js` ≤ `ICON_BUDGET.maxIndexBytes` |
+| 回退 chunk 不被静态引用 | 同上 | 全量 mdi 必须走按需加载 |
+| 子集完整性 | `tests/icons.test.ts` | 子集覆盖 `icons.ts` 全部图标、别名 parent 已收录 |
+| 裁切时校验 | `prune-icons.mjs` | 引用了 mdi 中不存在的图标时**直接构建失败** |
+
+> ⚠️ 统计图标数时**只能看 `index.js` 自身**，不能把 import 闭包全拼进来 ——
+> 回退 chunk（`icons-*.js`）属于闭包但永不加载，算进来会误报（该检查初版实测误报 7839 个）。
 
 ---
 
@@ -107,15 +149,19 @@ src/
 组件之间**必须**用相对路径互相引用（`./Button.vue`、`../kit/format`）。
 **禁止**出现 `@/`、`@sn/ui/` 等别名导入 —— 一旦出现，整目录复制到第三方项目就会编译失败。
 
-自检（应无输出；注意要匹配「导入语句」而非注释里提到的 `@/`）：
+**该规则已由 ESLint 强制**（`eslint.config.mjs` 的 `no-restricted-imports`），
+`npm run lint` 与 CI 都会拦截，报错信息会直接引用本条硬规则。
 
 ```bash
-# 真实导入语句：必须为空
-grep -rnE '^\s*(import|export)[^/]*from\s+["'"'"']@/' src/components/
+npm run lint                              # 推荐：跑全量 lint
+npx eslint src/components/                # 只查组件目录
 ```
 
+> 早期这里是一条手写 grep 自检，问题是要记得跑、正则易写歪、注释里的 `@/` 会误报。
+> 现改为 ESLint 规则后，属于「机器必然执行」，不再依赖人的自觉。
+>
 > 已知 `src/components/kit/variables.scss` 第 3 行的**注释**里提到了 `@use '@/variables.scss'`，
-> 那是描述源仓库转发壳的说明文字，不是导入，属正常。
+> 那是描述源仓库转发壳的说明文字，不是导入，ESLint 不会误报（它只看导入语句）。
 
 `@sn/ui` 别名（见 `vite.config.ts`）**仅供宿主/演示页书写方便**，组件内部不得使用。
 
@@ -313,7 +359,59 @@ tarball、记住的目标项目、发布历史、版本判定基线都在此目�
 8. **不碰 npm registry**，只做本地 tarball 分发。
 9. **不用 PowerShell 改含中文的文件**，改完立刻核对编码。
 10. **写组件用法前先查源码的 `interface Props`**，不猜。
-11. 改完必须跑通 `npm run typecheck` 与 `npm run build`，**不以「应该没问题」交付**。
+11. 改完必须跑通 `npm run verify` 与 `npm run build`（或 `build:lib`），**不以「应该没问题」交付**。
+12. **图标数据必须走裁切子集**，全量 mdi 只能动态 import（详见「图标体积护栏」）。
+13. **测试文件放仓库根 `tests/`**，不放 `src/components/`（否则破坏「整目录复制」）。
+
+---
+
+## 测试与静态检查
+
+### 为什么有这些检查
+
+本库 52 个组件原先只靠人工点检，且 `AGENTS.md` 明确要求「不以『应该没问题』交付」——
+但这条纪律当时**没有任何自动化兜底**。现补齐三层护栏：
+
+| 层 | 工具 | 拦截什么 |
+|---|---|---|
+| 类型 | `vue-tsc` ×2 | 类型错误（演示页 + 库两套配置） |
+| 静态 | ESLint | 组件内别名导入、导入私有子目录等**约定违规** |
+| 行为 | vitest + @vue/test-utils | 改坏了但不报错的运行期契约 |
+| 元数据 | publint | `exports` / `types` / `files` 解析问题 |
+| 产物 | `verify.mjs` | 依赖边界越界、图标体积回归 |
+
+### 测试放在 `tests/`，**不要**放 `src/components/`
+
+`src/components/` 必须保持「可整目录搬走」。若把测试放进去，第三方项目复制后会多出一堆
+跑不起来、也不需要的测试文件，直接破坏那条交付线。因此：
+
+```
+tests/icons.test.ts            # 图标真源完整性（★ 最重要，见下）
+tests/form-controls.test.ts    # 表单控件 v-model 契约
+tests/controlled-mode.test.ts  # 受控/非受控双模式 + Tabs 无障碍关联
+```
+
+### 最该写测试的两类东西
+
+1. **图标真源完整性**（`tests/icons.test.ts`）
+   图标键写错、裁切漏收、mdi 升级改名 —— 这几种情况**都不报错**，只渲染成问号圆圈，
+   人工点检极易漏过。测试对「构建时真正注册进 @iconify/vue 的那份数据」做断言。
+
+2. **受控 / 非受控双模式**
+   本库 `Tabs` / `Splitter` 都支持「传了 prop 即受控，不传则自持」，
+   改坏了不会有类型错误，只会让父组件拒绝回写时视图与 props 不一致。
+
+> 新增组件时**不必**配测试，但新增/修改上面两类逻辑时**必须**更新对应测试。
+
+### 已知的源码级发现（受零改写约束，暂不在本仓库修）
+
+- `SplitterPanel.vue` 同时存在 prop `size` 与同名局部 computed `size`（遮蔽隐患，
+  ESLint 以 warning 持续提示）。当前行为正确，但日后改动易出错。
+- `Tabs.vue` 的 `updateValue` 在受控模式下也会乐观写入内部状态，因此父组件**不回写
+  `value`** 时视图仍会自行切换（非严格受控）。详见 `tests/controlled-mode.test.ts`
+  里那条标注「【已知行为】」的用例。
+
+> 以上两项都应**回源仓库 `siyuanPluginVueSN` 修改后再同步**，不要在本仓库直接改。
 
 ---
 
@@ -322,6 +420,8 @@ tarball、记住的目标项目、发布历史、版本判定基线都在此目�
 ```
 package.json                    # 脚本、exports 映射、peerDependencies（vue 为 peer）
 vite.config.ts                  # 双模式构建（demo / lib）+ @sn/ui 别名
+vitest.config.ts                # 单元测试配置（jsdom + @vue/test-utils）
+eslint.config.mjs               # 静态检查：强制「组件内部零别名」等约定
 tsconfig.json                   # 演示页 + 组件库的检查配置
 tsconfig.lib.json               # 库构建的声明产出配置
 
@@ -332,9 +432,13 @@ src/components/docs/            # 组件库自带迁移说明（源仓库产物�
 src/demo/registry.ts            # ★ 演示目录唯一数据源
 src/demo/views/*.vue            # 各分组演示视图
 
+tests/*.test.ts                 # 单元测试（★ 不放进 src/components/）
+.github/workflows/ci.yml        # CI：verify + 两套构建 + 产物校验
+
 scripts/release.mjs             # 发布助手主入口（菜单 + CLI）
 scripts/lib/version.mjs         # 版本自动判定（分析 git 变更，取最高档）
-scripts/lib/verify.mjs          # 打包前后四道校验（含传递闭包依赖分析）
+scripts/lib/verify.mjs          # 打包前后四道校验（含依赖边界 + 图标体积预算）
+scripts/lib/prune-icons.mjs     # 按 icons.ts 裁切 mdi 图标数据（★ 体积关键）
 scripts/lib/install.mjs         # 两种安装模式 + 安装后校验
 scripts/templates/sncl-update.mjs # 目标项目侧一键升级脚本（模板）
 ```
@@ -351,3 +455,4 @@ scripts/templates/sncl-update.mjs # 目标项目侧一键升级脚本（模板�
 | [`scripts/README.md`](./scripts/README.md) | 发布助手的四个功能、命令行参数、常见问题 |
 | [`src/components/docs/components-vue3-migration-guide.md`](./src/components/docs/components-vue3-migration-guide.md) | 组件库自带的迁移说明（源仓库产物，阐述了「整目录复制」的前提条件） |
 | [`src/components/kit/README.md`](./src/components/kit/README.md) | kit 支撑层各文件职责与约束 |
+| [`tests/`](./tests/) | 单元测试；用例头部注释写明「为什么测这个」，新增测试请沿用 |

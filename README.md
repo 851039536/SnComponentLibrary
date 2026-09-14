@@ -480,13 +480,39 @@ npm run dev          # 打开演示页，逐一查看 52 个组件
 |---|---|
 | `npm run dev` | 启动演示页（`src/App.vue`） |
 | `npm run build` | 构建演示页到 `dist/` |
-| `npm run build:lib` | **构建 npm 包**到 `dist-lib/` |
+| `npm run build:lib` | **构建 npm 包**到 `dist-lib/`（构建前自动裁切图标数据） |
+| `npm run icons:prune` | 单独重新生成图标裁切子集（`build:lib` 会自动跑） |
 | `npm run preview` | 预览演示页构建产物 |
 | `npm run typecheck` | 类型检查（演示页 + 组件库） |
 | `npm run typecheck:lib` | 类型检查（库构建专用配置） |
+| `npm run test` | 单元测试（vitest，`tests/`） |
+| `npm run test:watch` | 单元测试（watch 模式） |
+| `npm run lint` | ESLint（含「组件内部零别名」强制规则） |
+| `npm run publint` | 校验包元数据（`exports` / `types` / `files`）解析正确性 |
+| `npm run verify` | **一键跑全部检查**（typecheck ×2 + lint + test + publint） |
 | `npm run release` | **发布助手**（打包 / 版本变化打包 / 安装到其他项目 / 历史） |
 
 > 发布助手详见 [`scripts/README.md`](./scripts/README.md)。
+>
+> **提交前请跑 `npm run verify`**。CI（`.github/workflows/ci.yml`）会在 PR 上执行同一套检查，
+> 外加两套构建与产物体积/依赖边界校验。
+
+### 关于产物体积（重要）
+
+组件库主入口 `dist-lib/index.js` 约 **420 KB**（gzip 约 89 KB）。
+
+这个数字是**被刻意保护**的：全量 mdi 图标集有 7638 个图标（约 2.8 MB），
+而本库只用到 **201 个**。若 `kit/iconify.ts` 改回顶层静态 import 全量数据，
+主入口会涨到约 **3.4 MB** —— 且**不会有任何类型错误或运行时报错**，唯一症状就是体积。
+
+因此 `scripts/lib/verify.mjs` 的校验 3/4 会断言：
+
+1. 主入口内联的图标数在预算内（超过上限即判定「退回了全量图标集」）；
+2. 主入口体积在预算内；
+3. 全量 mdi 的**回退 chunk 未被静态引用**（保证回退能力是「按需加载」而非「无条件打包」）。
+
+预算常量定义在 `scripts/lib/verify.mjs` 顶部的 `ICON_BUDGET`。
+
 
 三种使用形态共用同一份组件源码，互不影响：
 
