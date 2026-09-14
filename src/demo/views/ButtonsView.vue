@@ -43,6 +43,16 @@ function fakeLoad() {
         <Button size="large">large</Button>
       </DemoRow>
 
+      <!-- dense 是「紧凑几何修饰」，**只与 size="xsmall" 协同时生效**：
+           去 min-height、收紧 padding/gap/圆角，字号仍取 xsmall 的 10px。
+           单独使用（不配 xsmall）时不会产生任何效果 —— 见下方对照。 -->
+      <DemoRow>
+        <Button size="xsmall" dense>dense（紧凑）</Button>
+        <Button size="xsmall" dense icon="plus">带图标</Button>
+        <Button size="xsmall" dense rounded icon="close" aria-label="关闭" />
+        <Button size="medium" dense>medium + dense（无效，对照）</Button>
+      </DemoRow>
+
       <DemoRow>
         <Button icon="save" icon-position="left">左图标</Button>
         <Button icon="send" icon-position="right">右图标</Button>

@@ -51,7 +51,7 @@
   }
 
   &--medium {
-    padding: m.$gap-xs 14px; // 6px 14px（原 8px 16px）；14px 无对应 Token
+    padding: m.$gap-xs $s-px14; // 6px 14px（原 8px 16px）；14px 已收敛为全局 Token
     font-size: $t-sm;
     min-height: 36px;
     gap: m.$gap-xs; // 6px（原 8px）
@@ -63,7 +63,7 @@
   }
 
   &--large {
-    padding: m.$spacing-2_5 18px; // 10px 18px（原 12px 20px）；18px 无对应 Token
+    padding: m.$spacing-2_5 $s-px18; // 10px 18px（原 12px 20px）；18px 已收敛为全局 Token
     font-size: $t-base; // 原 15px → 统一为 base(16px)
     min-height: 44px;
     gap: m.$spacing-2_5; // 10px（原 12px）
