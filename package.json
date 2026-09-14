@@ -2,25 +2,72 @@
   "name": "sn-component-library",
   "type": "module",
   "version": "1.0.0",
-  "private": true,
-  "description": "通用 Vue 3 组件库：52 个开箱即用的 UI 组件（表单、浮层、选择器、图表等），零框架耦合，可整体复制到任意 Vue 3 项目",
+  "description": "通用 Vue 3 组件库：52 个开箱即用的 UI 组件（表单、浮层、选择器、图表等），零框架耦合，图标离线可用",
+  "keywords": [
+    "vue",
+    "vue3",
+    "component-library",
+    "ui",
+    "typescript",
+    "vite"
+  ],
+  "license": "MIT",
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss",
+    "**/kit/theme.ts",
+    "**/kit/iconify.ts"
+  ],
+  "files": [
+    "dist-lib"
+  ],
+  "main": "./dist-lib/index.js",
+  "module": "./dist-lib/index.js",
+  "types": "./dist-lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-lib/index.d.ts",
+      "import": "./dist-lib/index.js"
+    },
+    "./chart": {
+      "types": "./dist-lib/chart.d.ts",
+      "import": "./dist-lib/chart.js"
+    },
+    "./style.css": "./dist-lib/style.css",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:lib": "vite build --mode lib",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "typecheck:lib": "vue-tsc --noEmit -p tsconfig.lib.json"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "chart.js": {
+      "optional": true
+    },
+    "vue-chartjs": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@iconify-json/mdi": "^1.2.3",
-    "@iconify/vue": "^5.0.1",
-    "vue": "^3.5.42"
+    "@iconify/vue": "^5.0.1"
   },
   "devDependencies": {
+    "@types/node": "^26.5.1",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/tsconfig": "^0.9.1",
     "sass": "^1.104.0",
     "typescript": "~5.9.3",
     "vite": "^7.3.6",
+    "vite-plugin-dts": "^5.1.0",
+    "vue": "^3.5.42",
     "vue-tsc": "^3.3.11"
   }
 }

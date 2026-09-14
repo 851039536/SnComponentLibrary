@@ -8,33 +8,112 @@
 | 技术栈 | Vue 3.5 + Vite 7 + TypeScript 5.9 |
 | 组件数 | 52 个公开组件（`src/components/*.vue`） |
 | 来源 | 从 `siyuanPluginVueSN` 的 `src/components/` 整体迁移，未改写任何组件实现 |
-| 运行时依赖 | `vue`、`@iconify/vue`、`@iconify-json/mdi` |
-| 可选依赖 | `chart.js`、`vue-chartjs`（仅 `Chart.vue` 需要） |
+| 包名 | `sn-component-library` |
+| peer 依赖 | `vue`（`^3.5.0`） |
+| 运行时依赖 | `@iconify/vue`、`@iconify-json/mdi`（后者为离线图标数据） |
+| 可选依赖 | `chart.js`、`vue-chartjs`（**仅**使用图表时需要，见第三章） |
 
 ---
 
-## 一、快速开始
+## 一、导入到其他项目
+
+有两种方式，按场景选择：
+
+| 方式 | 适用场景 | 是否需构建本仓库 |
+|---|---|---|
+| **A. 安装 npm 包** | 常规使用；希望按 import 路径引组件、有类型提示 | 需要（`npm run build:lib`） |
+| **B. 复制组件源码** | 想直接改组件源码；不想引入构建流程 | 不需要 |
+
+> **推荐方式 A**：组件之间互相依赖，用包管理能拿到完整类型提示，且升级只需重新安装。
+> 方式 B 适合需要深度定制组件内部实现的情况。
+
+### 方式 A：作为 npm 包安装（推荐）
+
+**第 1 步：在本仓库构建并打包**
 
 ```bash
+cd SnComponentLibrary
 npm install
-npm run dev        # 打开演示页，逐一查看 52 个组件
+npm run build:lib          # 产出 dist-lib/（JS + .d.ts + style.css）
+npm pack                   # 产出 sn-component-library-1.0.0.tgz
 ```
 
-其他脚本：
+**第 2 步：在目标项目中安装**
 
 ```bash
-npm run build      # 构建演示页到 dist/
-npm run preview    # 预览构建产物
-npm run typecheck  # vue-tsc 类型检查
+# 本地 tarball（离线分发 / 内网）
+npm i /path/to/sn-component-library-1.0.0.tgz
+
+# 或者：直接指向本仓库目录（开发期联调最省事，改了本仓库重新 install 即生效）
+npm i file:/path/to/SnComponentLibrary
+
+# 或者：已发布到私有/公有 registry
+npm i sn-component-library
 ```
 
----
+目标项目还需要（`vue` 是 peer 依赖，须自行安装；`@iconify/*` 会自动带上）：
 
-## 二、在其它 Vue 3 项目中引入
+```bash
+npm i vue@^3.5.0
+```
 
-### 方式 A：复制组件源码（推荐，零构建成本）
+**第 3 步：引入样式并开始使用**
 
-把 `src/components/` **整个目录**复制到目标项目（例如放到目标项目的 `src/components/`），然后：
+```ts
+// main.ts
+import { createApp } from "vue"
+import App from "./App.vue"
+import "sn-component-library/style.css"   // ① 组件样式，全局引入一次
+
+createApp(App).mount("#app")
+```
+
+```vue
+<!-- 任意组件 -->
+<script setup lang="ts">
+import { Button, Input, Select } from "sn-component-library"  // ② 具名导入，按需 tree-shaking
+import { ref } from "vue"
+
+const name = ref("")
+const plan = ref("pro")
+const options = [
+  { label: "免费版", value: "free" },
+  { label: "专业版", value: "pro" },
+]
+</script>
+
+<template>
+  <Input v-model="name" label="用户名" size="small" />
+  <Select v-model="plan" :options="options" label="套餐" size="small" />
+  <!-- 注意：Button 的文字写在插槽里，没有 label 属性！ -->
+  <Button variant="primary" @click="save">保存</Button>
+</template>
+```
+
+**用图表组件时（可选依赖）**
+
+`Chart` **不在主入口**，它单独放在子路径下，这样不用图表的项目无需安装 `chart.js`：
+
+```bash
+npm i chart.js vue-chartjs
+```
+
+```vue
+<script setup lang="ts">
+import { Chart } from "sn-component-library/chart"
+</script>
+```
+
+**方式 A 的注意事项**
+
+- 本包 `main`/`module` 字段指向 `dist-lib/index.js`（ES 格式，无 CJS 版本）。
+  目标项目需为 Vite / Rollup / Webpack 5 等支持 ESM 的构建工具。
+- 使用方**无需**自己配置 sass —— 样式已在构建期编译进 `style.css`。
+- 使用方**无需**手动注册图标集 —— 离线图标数据已内置（见第四章）。
+
+### 方式 B：复制组件源码
+
+把 `src/components/` **整个目录**复制到目标项目（例如 `src/components/`），然后：
 
 ```bash
 npm i vue @iconify/vue @iconify-json/mdi
@@ -43,27 +122,43 @@ npm i -D sass @vitejs/plugin-vue
 npm i chart.js vue-chartjs
 ```
 
+```vue
+<script setup lang="ts">
+import Button from "./components/Button.vue"
+import Input from "./components/Input.vue"
+</script>
+```
+
 > ⚠️ 必须**整个目录**复制，不要只挑几个 `.vue` 文件。组件之间互相引用，
 > 并且依赖 `styles/`、`kit/` 及各私有子目录，少一个都会编译报错。
 > 目录内部**全部使用相对路径**，所以放在哪儿都行，也不需要配置路径别名。
 
-### 方式 B：本仓库内引用（配了 `@sn/ui` 别名）
+---
 
-本仓库的 `vite.config.ts` 已配置别名 `@sn/ui` → `src/components`：
+## 二、本仓库自身的开发
 
-```vue
-<script setup lang="ts">
-import Button from "@sn/ui/Button.vue"
-import Input from "@sn/ui/Input.vue"
-</script>
-
-<template>
-  <Input v-model="name" placeholder="你的名字" size="small" />
-  <Button variant="primary">保存</Button>
-</template>
+```bash
+npm install
+npm run dev          # 打开演示页，逐一查看 52 个组件
 ```
 
-> 该别名只为本仓库/宿主书写方便，**组件内部不使用它**——这正是组件库能被整体搬运的前提。
+| 脚本 | 作用 |
+|---|---|
+| `npm run dev` | 启动演示页（`src/App.vue`） |
+| `npm run build` | 构建演示页到 `dist/` |
+| `npm run build:lib` | **构建 npm 包**到 `dist-lib/` |
+| `npm run preview` | 预览演示页构建产物 |
+| `npm run typecheck` | 类型检查（演示页 + 组件库） |
+| `npm run typecheck:lib` | 类型检查（库构建专用配置） |
+
+三种使用形态共用同一份组件源码，互不影响：
+
+```
+src/components/   ← 组件库本体（唯一真源）
+   ├── 方式 B 直接复制它
+   ├── 方式 A 由 build:lib 编译成 dist-lib/
+   └── src/App.vue 演示页直接引用它
+```
 
 ---
 
@@ -85,7 +180,11 @@ import Input from "@sn/ui/Input.vue"
 **方式 2：调用组件库提供的函数**
 
 ```ts
-import { applyDefaultTheme } from "@sn/ui/kit/theme"
+// 方式 A（npm 包）安装的：
+import { applyDefaultTheme } from "sn-component-library"
+
+// 方式 B（复制源码）的：
+import { applyDefaultTheme } from "./components/kit/theme"
 
 applyDefaultTheme({ overrides: { "b3-theme-primary": "#7c3aed" } })
 ```
@@ -124,6 +223,8 @@ document.documentElement.classList.toggle("dark", isDark)
 src/
 ├── main.ts                  # 演示页入口
 ├── App.vue                  # 演示 / 自测页（按功能分组渲染代表性组件）
+├── index.ts                 # ★ npm 包主入口（导出 52 个组件 + kit 公共能力）
+├── chart.ts                 # ★ 图表子入口（sn-component-library/chart）
 ├── vite-env.d.ts            # *.vue 类型声明 + Chart 可选依赖的占位声明
 └── components/              # ★ 组件库本体（可整体复制走）
     ├── *.vue                # 52 个公开组件
@@ -140,7 +241,15 @@ src/
     └── docs/                # 组件库自带迁移说明与维护者约定
 ```
 
+产物目录（均已在 `.gitignore` 中忽略）：
+
+```
+dist/       # npm run build      演示页产物
+dist-lib/   # npm run build:lib  npm 包产物（index.js / chart.js / style.css / *.d.ts）
+```
+
 命名约定：`components/` 根目录下的 `.vue` 是**公开入口**，各私有子目录为内部实现，业务代码不应深入导入。
+包入口 `src/index.ts` 也只导出这 52 个公开组件，不导出私有子目录。
 
 ---
 
@@ -171,3 +280,18 @@ src/
    该缺陷在思源内被掩盖（宿主确实先定义了变量），迁移到普通项目后才暴露。
 
 同步自源仓库时请注意：`kit/theme.ts` 的这处修复需要**反向回灌**到源仓库。
+
+### npm 包相关（方式 A）
+
+3. **新增 `src/index.ts`**：包主入口，具名导出 52 个公开组件与 `kit/` 公共能力，
+   不导出私有子目录（避免锁死内部结构）。
+4. **新增 `src/chart.ts`**：图表子入口。`Chart` **刻意不从主入口导出** ——
+   `dist-lib/index.js` 是单文件 bundle，被主入口引用的模块会在加载时执行顶层 `import`，
+   若 Chart 挂在主入口，**未安装 `chart.js` 的使用方会直接构建失败**（已实测复现）。
+   拆成子入口后，只有真的用图表的项目才需要装 `chart.js`。
+5. **`vite.config.ts` 支持双模式**：`vite build` 出演示页（`dist/`），
+   `vite build --mode lib` 出 npm 包（`dist-lib/`，双入口 + `vite-plugin-dts` 生成 `.d.ts`）。
+6. **图标数据保持全量内联**（`index.js` 因此约 3.3MB / gzip 约 800KB）：
+   这是刻意的取舍 —— 换取任何图标键开箱即用且断网可用。
+   库自身渲染只用到 15 个图标键，如日后需要瘦身可改为按需子集 + 全量开关。
+
