@@ -1,0 +1,76 @@
+@use "../kit/variables.scss" as *;
+
+.color-field {
+  position: relative; // 调色板弹层的定位锚点
+  display: flex;
+  align-items: center;
+  gap: $s-2;
+  width: 100%;
+}
+
+/* 当前颜色色块按钮 */
+.color-swatch-btn {
+  flex: none;
+  width: 40px;
+  height: 28px;
+  border: 1px solid var(--b3-theme-outline);
+  border-radius: $r-base;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    border-color: var(--b3-theme-primary);
+  }
+}
+
+.color-input {
+  flex: 1;
+  min-width: 0;
+  padding: $s-1 $s-2;
+  font-size: $t-xs;
+  border: 1px solid var(--b3-theme-outline);
+  border-radius: $r-base;
+  background: var(--b3-theme-surface);
+  color: var(--b3-theme-on-surface);
+
+  &:focus {
+    outline: none;
+    border-color: var(--b3-theme-primary);
+  }
+}
+
+/* 预设调色板弹层 */
+.color-popover {
+  position: absolute;
+  top: calc(100% + #{$s-1});
+  left: 0;
+  z-index: 10; // 覆盖面板内相邻表单控件
+  padding: $s-2;
+  background: var(--b3-theme-surface);
+  border: 1px solid var(--b3-theme-outline);
+  border-radius: $r-md;
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: $s-1;
+}
+
+.palette-swatch {
+  // 调色板色块固定尺寸（8 列紧凑网格），无对应间距 Token
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--b3-theme-outline);
+  border-radius: $r-sm;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--b3-theme-primary);
+  }
+
+  &.active {
+    border: 2px solid var(--b3-theme-primary);
+  }
+}

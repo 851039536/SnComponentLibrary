@@ -1,0 +1,46 @@
+// ========== ConfirmDialog.scss ==========
+// 确认对话框外壳：遮罩 + 卡片；内容段（标题 / 消息 / 操作区）样式在 ConfirmBody.scss
+// 遮罩基础样式与九档位置声明来自共享 _overlay.scss（与 Dialog 同一套，避免两处重复）
+@use '../kit/variables.scss' as *;
+@use './_overlay.scss' as overlay;
+
+@include overlay.overlay-mask('si-confirm-mask');
+@include overlay.overlay-positions('si-confirm-mask');
+
+.si-confirm {
+  width: 360px; // 弹窗宽度，尺寸级固定值无对应 Token
+  max-width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: $t-xs; // 弹层基准字号
+  background: var(--b3-theme-background, $c-bg);
+  color: var(--b3-theme-on-background, $c-fg);
+  // 边框取中性边框色（相邻色陷阱：surface 与 background 灰度仅差约 3%）
+  border: 1px solid var(--b3-border-color, $c-border);
+  border-radius: $r-base;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+// 过渡：0.12s ease，淡入 + 卡片轻微缩放
+.si-confirm-fade-enter-active,
+.si-confirm-fade-leave-active {
+  transition: opacity 0.12s ease;
+
+  .si-confirm {
+    transition: transform 0.12s ease;
+  }
+}
+
+.si-confirm-fade-enter-from,
+.si-confirm-fade-leave-to {
+  opacity: 0;
+
+  .si-confirm {
+    transform: scale(0.98);
+  }
+}

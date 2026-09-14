@@ -1,0 +1,224 @@
+// ========== Listbox.scss ==========
+// 内联列表选择：面板 + 选项列表。无浮层，故面板可安全 overflow: hidden（列表自带纵向滚动）
+@use './_mixins.scss' as m;
+@use '../kit/variables.scss' as *;
+
+.si-listbox {
+  display: inline-flex;
+  flex-direction: column;
+  width: 100%;
+  font-family: $ff-zh;
+  vertical-align: middle;
+
+  // ===== 面板 =====
+  &__panel {
+    background: var(--b3-theme-background, $c-bg);
+    border: 1px solid var(--b3-border-color, $c-border);
+    border-radius: $r-base;
+    overflow: hidden;
+    transition: border-color 0.12s ease;
+  }
+
+  // ===== 筛选区（内嵌无边框 Input，焦点反馈由本容器承担） =====
+  &__filter {
+    padding: $s-2;
+    border-bottom: 1px solid var(--b3-border-color, $c-border);
+    transition: background-color 0.12s ease;
+
+    &:focus-within {
+      background: var(--b3-theme-surface-lighter, $c-surface);
+    }
+  }
+
+  // ===== 列表（自带滚动，避免超长列表撑破面板） =====
+  &__list {
+    overflow-y: auto;
+    overflow-x: hidden;
+    outline: none;
+
+    &:focus-visible {
+      outline: 2px solid var(--b3-theme-primary, $c-danger);
+      outline-offset: -2px;
+    }
+
+    &::-webkit-scrollbar {
+      width: m.$gap-xs; // 6px
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--b3-theme-surface-light, $c-surface);
+      border-radius: $r-sm;
+
+      &:hover {
+        background: var(--b3-theme-secondary, $c-muted);
+      }
+    }
+  }
+
+  // ===== 选项（默认值取 S 档兜底，档位块覆盖） =====
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: m.$gap-xs; // 6px
+    padding: $s-px2 m.$gap-xs; // 2px 6px
+    min-height: 28px; // 无对应 Token
+    font-size: $t-xs;
+    color: var(--b3-theme-on-background, $c-fg);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+
+    &:hover:not(.si-listbox__option--disabled) {
+      background: var(--b3-theme-surface-lighter, $c-surface);
+    }
+
+    // 选中底色：弱化主色（相对颜色语法，明暗主题下自动正确）
+    &--highlight {
+      background: hsla(from var(--b3-theme-primary, $c-danger) h s l / 0.12);
+
+      &:hover:not(.si-listbox__option--disabled) {
+        background: hsla(from var(--b3-theme-primary, $c-danger) h s l / 0.18);
+      }
+    }
+
+    &--selected {
+      color: var(--b3-theme-on-background, $c-fg);
+      font-weight: $fw-medium;
+    }
+
+    &--disabled {
+      opacity: m.$opacity-disabled;
+      cursor: not-allowed;
+    }
+
+    // 键盘活动项：内嵌轮廓，与选中底色可同时存在而不混淆
+    &--active:not(.si-listbox__option--disabled) {
+      outline: 2px solid var(--b3-theme-primary, $c-danger);
+      outline-offset: -2px;
+    }
+  }
+
+  &__option-text {
+    flex: 1;
+    min-width: 0;
+    line-height: $lh-normal;
+    word-break: break-word;
+  }
+
+  // ===== 指示器：checkbox 常驻方框 / checkmark 仅选中时显示勾选 =====
+  &__check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    color: var(--b3-theme-primary, $c-danger);
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+  }
+
+  &--checkbox &__check {
+    border: 1px solid var(--b3-border-color, $c-border);
+    border-radius: $r-sm;
+    color: var(--b3-theme-on-primary, $c-bg);
+  }
+
+  &--checkbox &__option--selected &__check {
+    background: var(--b3-theme-primary, $c-danger);
+    border-color: var(--b3-theme-primary, $c-danger);
+  }
+
+  // ===== 空态（无数据与筛选无结果共用） =====
+  &__empty {
+    padding: $s-3;
+    text-align: center;
+    color: var(--b3-theme-secondary, $c-muted);
+    font-size: $t-xs;
+  }
+
+  // ===== 状态 =====
+  &--error &__panel {
+    border-color: var(--b3-theme-error, $c-danger);
+  }
+
+  &--disabled &__panel {
+    opacity: m.$opacity-disabled;
+    cursor: not-allowed;
+  }
+
+  // 禁用时整体不响应指针（同时屏蔽悬停底色与点击）
+  &--disabled &__list {
+    pointer-events: none;
+  }
+
+  // ===== 尺寸档位（字号阶梯 10 / 12 / 14 / 16，行内边距与最小行高同步递进） =====
+  &--xsmall {
+    .si-listbox__option {
+      padding: $s-px2 m.$gap-xs; // 2px 6px
+      min-height: 22px; // 无对应 Token
+      font-size: $t-2xs;
+    }
+
+    .si-listbox__check {
+      width: 14px; // 无对应 Token
+      height: 14px;
+    }
+
+    .si-listbox__empty {
+      font-size: $t-2xs;
+    }
+  }
+
+  &--small {
+    .si-listbox__option {
+      padding: $s-px2 m.$gap-xs; // 2px 6px
+      min-height: 28px; // 无对应 Token
+      font-size: $t-xs;
+    }
+
+    .si-listbox__check {
+      width: $s-4; // 16px
+      height: $s-4;
+    }
+
+    .si-listbox__empty {
+      font-size: $t-xs;
+    }
+  }
+
+  &--medium {
+    .si-listbox__option {
+      padding: m.$gap-xs m.$spacing-2_5; // 6px 10px
+      min-height: 36px;
+      font-size: $t-sm;
+    }
+
+    .si-listbox__check {
+      width: 18px; // 无对应 Token
+      height: 18px;
+    }
+
+    .si-listbox__empty {
+      font-size: $t-sm;
+    }
+  }
+
+  &--large {
+    .si-listbox__option {
+      padding: m.$spacing-2_5 14px; // 10px 14px；14px 无对应 Token
+      min-height: 44px;
+      font-size: $t-base;
+    }
+
+    .si-listbox__check {
+      width: $s-5; // 20px
+      height: $s-5;
+    }
+
+    .si-listbox__empty {
+      font-size: $t-base;
+    }
+  }
+}

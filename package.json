@@ -1,0 +1,26 @@
+{
+  "name": "sn-component-library",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "通用 Vue 3 组件库：52 个开箱即用的 UI 组件（表单、浮层、选择器、图表等），零框架耦合，可整体复制到任意 Vue 3 项目",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@iconify-json/mdi": "^1.2.3",
+    "@iconify/vue": "^5.0.1",
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/tsconfig": "^0.9.1",
+    "sass": "^1.104.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6",
+    "vue-tsc": "^3.3.11"
+  }
+}

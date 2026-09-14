@@ -1,0 +1,315 @@
+// ========== Input.scss ==========
+@use './_mixins.scss' as m;
+@use '../kit/variables.scss' as *;
+
+.si-input {
+  display: inline-flex;
+  flex-direction: column;
+  position: relative;
+  font-family: $ff-zh;
+  width: 100%;
+
+  &__wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: var(--b3-theme-background, $c-bg);
+    border: 1px solid var(--b3-border-color, $c-border);
+    border-radius: $r-base;
+    outline: none;
+
+    &:hover:not(.si-input--disabled .si-input__wrapper) {
+      border-color: var(--b3-theme-secondary, $c-info);
+    }
+
+    // Codex 边框优先策略 — 替代原 box-shadow: 0 0 0 3px
+    &:focus-within {
+      @include m.focus-ring;
+    }
+
+    &--error {
+      border-color: var(--b3-theme-error, $c-danger) !important;
+
+      &:focus-within {
+        border-color: var(--b3-theme-error, $c-danger);
+      }
+    }
+  }
+
+  &__field {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: $ff-zh;
+    font-size: $t-sm;
+    color: var(--b3-theme-on-background, $c-fg);
+    padding: $s-2 $s-3;
+
+    &::placeholder {
+      color: var(--b3-theme-secondary, $c-muted);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: m.$opacity-muted;
+    }
+
+    &:read-only {
+      cursor: default;
+    }
+
+    &--with-prefix {
+      padding-left: 0;
+    }
+
+    &--with-suffix {
+      padding-right: 0;
+    }
+
+    &--textarea {
+      resize: vertical;
+      min-height: 80px; // 无对应 Token，保留
+      max-height: 200px; // 无对应 Token，保留
+      line-height: $lh-relaxed; // 原 1.6 → 1.75
+      align-items: flex-start;
+
+      &::-webkit-scrollbar {
+        width: $s-2; // 8px
+      }
+
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: var(--b3-theme-surface-light, $c-surface);
+        border-radius: $r-sm;
+
+        &:hover {
+          background: var(--b3-theme-secondary, $c-muted);
+        }
+      }
+    }
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    color: var(--b3-theme-secondary, $c-muted);
+
+    &--prefix {
+      margin-left: $s-3;
+    }
+
+    &--suffix {
+      margin-right: $s-3;
+    }
+  }
+
+  &__clear,
+  &__password-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $s-1;
+    margin-right: $s-2;
+    color: var(--b3-theme-secondary, $c-muted);
+    cursor: pointer;
+    border-radius: $r-sm;
+
+    &:hover {
+      color: var(--b3-theme-on-background, $c-fg);
+      background: var(--b3-theme-surface-lighter, $c-surface);
+    }
+  }
+
+  &__resize-handle {
+    position: absolute;
+    bottom: $s-1; // 4px
+    right: $s-1;
+    width: $s-4; // 16px
+    height: $s-4;
+    cursor: ns-resize;
+    border-radius: $r-sm;
+
+    &::before {
+      content: '';
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      width: $s-2;
+      height: 2px;
+      background: repeating-linear-gradient(
+        to right,
+        var(--b3-theme-secondary, $c-muted) 0px,
+        var(--b3-theme-secondary, $c-muted) 2px,
+        transparent 2px,
+        transparent 4px
+      );
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: $s-2;
+      right: 5px;
+      width: $s-2;
+      height: 2px;
+      background: repeating-linear-gradient(
+        to right,
+        var(--b3-theme-secondary, $c-muted) 0px,
+        var(--b3-theme-secondary, $c-muted) 2px,
+        transparent 2px,
+        transparent 4px
+      );
+    }
+
+    &:hover::before,
+    &:hover::after {
+      background: repeating-linear-gradient(
+        to right,
+        var(--b3-theme-primary, $c-danger) 0px,
+        var(--b3-theme-primary, $c-danger) 2px,
+        transparent 2px,
+        transparent 4px
+      );
+    }
+
+    &:hover {
+      background: rgba(var(--b3-theme-primary-rgb, 201, 122, 93), 0.1);
+    }
+
+    &:active::before,
+    &:active::after {
+      background: var(--b3-theme-primary, $c-danger);
+    }
+  }
+
+  // 尺寸变体
+  &--xsmall {
+    .si-input__field {
+      padding: $s-px2 $s-px6; // 特小号，已收敛为全局 Token，保留
+      font-size: $t-2xs; // XS 档字号阶梯：10px
+      min-height: 22px; // 无对应 Token
+    }
+
+    .si-input__icon--prefix {
+      margin-left: $s-1;
+    }
+
+    .si-input__icon--suffix {
+      margin-right: $s-1;
+    }
+
+    .si-input__clear,
+    .si-input__password-toggle {
+      padding: $s-px1;
+      margin-right: $s-1;
+    }
+  }
+
+  &--small {
+    .si-input__field {
+      padding: $s-px2 m.$gap-xs; // 2px 6px（原 4px 8px，各减 2px）
+      font-size: $t-xs;
+      min-height: 28px; // 无对应 Token
+    }
+
+    .si-input__icon--prefix {
+      margin-left: $s-2;
+    }
+
+    .si-input__icon--suffix {
+      margin-right: $s-2;
+    }
+
+    .si-input__clear,
+    .si-input__password-toggle {
+      padding: $s-1;
+      margin-right: $s-1;
+    }
+  }
+
+  &--medium {
+    .si-input__field {
+      padding: m.$gap-xs m.$spacing-2_5; // 6px 10px（原 8px 12px，各减 2px）
+      font-size: $t-sm;
+      min-height: 36px;
+    }
+
+    .si-input__icon--prefix {
+      margin-left: $s-3;
+    }
+
+    .si-input__icon--suffix {
+      margin-right: $s-3;
+    }
+
+    .si-input__clear,
+    .si-input__password-toggle {
+      padding: $s-1;
+      margin-right: $s-2;
+    }
+  }
+
+  &--large {
+    .si-input__field {
+      padding: m.$spacing-2_5 $s-px14; // 10px 14px（原 12px 16px，各减 2px）；14px 已收敛为全局 Token
+      font-size: $t-base; // 原 15px → base(16px)
+      min-height: 44px;
+    }
+
+    .si-input__icon--prefix {
+      margin-left: $s-4;
+    }
+
+    .si-input__icon--suffix {
+      margin-right: $s-4;
+    }
+
+    .si-input__clear,
+    .si-input__password-toggle {
+      padding: $s-2;
+      margin-right: $s-3;
+    }
+  }
+
+  &--textarea {
+    .si-input__wrapper {
+      align-items: stretch;
+    }
+  }
+
+  &--disabled {
+    .si-input__wrapper {
+      background: var(--b3-theme-surface, $c-surface);
+      cursor: not-allowed;
+    }
+  }
+
+  &--readonly {
+    .si-input__wrapper {
+      background: var(--b3-theme-surface-lighter, $c-surface);
+    }
+  }
+
+  &--error {
+    .si-input__wrapper {
+      border-color: var(--b3-theme-error, $c-danger);
+    }
+  }
+
+  // 无边框：供复合控件内嵌（如标签输入框的内联输入）
+  // 去边框与底色；焦点反馈交由外层复合容器以 :focus-within 承担，此处不画 focus ring
+  // （三条选择器顺序书写以覆盖基类的 hover / focus-within 规则，特异性逐条递增）
+  &--borderless {
+    .si-input__wrapper,
+    .si-input__wrapper:hover:not(.si-input--disabled .si-input__wrapper),
+    .si-input__wrapper:focus-within {
+      background: transparent;
+      border-color: transparent;
+      border-radius: 0;
+    }
+  }
+}

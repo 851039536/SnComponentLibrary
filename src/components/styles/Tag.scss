@@ -1,0 +1,270 @@
+// ========== Tag.scss ==========
+@use './_mixins.scss' as m;
+@use '../kit/variables.scss' as *;
+
+.si-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: m.$gap-xs; // 6px
+  padding: $s-1 m.$spacing-2_5; // 4px 10px
+  border: 1px solid transparent;
+  font-family: $ff-zh;
+  font-weight: $fw-medium;
+  line-height: $lh-normal;
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+
+  // 尺寸变体
+  &--xsmall {
+    font-size: $t-2xs;
+    padding: 1px $s-1; // 无对应 Token
+
+    .si-tag__close {
+      width: 10px;
+      height: 10px;
+    }
+  }
+
+  &--small {
+    font-size: $t-xs;
+    padding: $s-px2 m.$gap-xs; // 2px 6px（水平 8px→6px；纵向 2px 已到下限，保留）
+
+    .si-tag__close {
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  &--medium {
+    font-size: $t-sm;
+    padding: $s-px2 $s-2; // 2px 8px（原 4px 10px，各减 2px）
+
+    .si-tag__close {
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  &--large {
+    font-size: $t-base;
+    padding: $s-1 $s-3; // 4px 12px（原 6px 14px，各减 2px）
+
+    .si-tag__close {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  // 形状变体
+  &--rounded {
+    border-radius: $r-md;
+  }
+
+  &--square {
+    border-radius: $r-sm;
+  }
+
+  &--circle {
+    border-radius: $r-full;
+    // 圆形徽标：内容恒为「数字 / 单字」，故用固定最小边长 + 等距内边距撑出正圆
+    justify-content: center;
+    min-width: $s-5; // 20px
+    padding: $s-px1 $s-px5; // 1px 5px（纵向压到最小，横向留出数字宽度）
+  }
+
+  // ========== 变体样式 ==========
+  // 默认外观：「同色系 10% 浅底 + 100% 文字 + 20% 描边」（`--fill` 时改写为实底，见下方）
+  &--default {
+    background: var(--b3-theme-surface-lighter, $c-surface);
+    color: var(--b3-theme-on-surface, $c-fg);
+    border-color: var(--b3-border-color, $c-border);
+  }
+
+  &--primary {
+    background: hsla(from var(--b3-theme-primary, $c-danger) h s l / 0.1);
+    color: var(--b3-theme-primary, $c-danger);
+    border-color: hsla(from var(--b3-theme-primary, $c-danger) h s l / 0.2);
+  }
+
+  &--success {
+    background: hsla(from var(--b3-theme-success, $c-success) h s l / 0.1);
+    color: var(--b3-theme-success, $c-success);
+    border-color: hsla(from var(--b3-theme-success, $c-success) h s l / 0.2);
+  }
+
+  // `warning` 与 `warn` 为同义别名：库内命名 + 官方 Badge severity 命名，样式合并（下同）
+  &--warning,
+  &--warn {
+    background: hsla(from var(--b3-theme-warning, $c-warning) h s l / 0.1);
+    color: var(--b3-theme-warning, $c-warning);
+    border-color: hsla(from var(--b3-theme-warning, $c-warning) h s l / 0.2);
+  }
+
+  // ⚠️ 错误色只有 --b3-theme-error（--b3-theme-destructive 宿主从未定义）
+  // `danger` / `error` 为同义别名
+  &--danger,
+  &--error {
+    background: hsla(from var(--b3-theme-error, $c-danger) h s l / 0.1);
+    color: var(--b3-theme-error, $c-danger);
+    border-color: hsla(from var(--b3-theme-error, $c-danger) h s l / 0.2);
+  }
+
+  &--info {
+    background: hsla(from var(--b3-theme-info, $c-info) h s l / 0.1);
+    color: var(--b3-theme-info, $c-info);
+    border-color: hsla(from var(--b3-theme-info, $c-info) h s l / 0.2);
+  }
+
+  // 中性面（官方 Badge 的 `secondary`）：宿主无 --b3-theme-secondary 语义色，故走 surface / on-surface / border 中性族
+  &--secondary {
+    background: var(--b3-theme-surface-lighter, $c-surface);
+    color: var(--b3-theme-on-surface, $c-fg);
+    border-color: var(--b3-border-color, $c-border);
+  }
+
+  // 反色（官方 Badge 的 `contrast`）：前景色铺底 + 背景色文字（明暗主题自动互为反转）
+  &--contrast {
+    background: var(--b3-theme-on-background, $c-fg);
+    color: var(--b3-theme-background, $c-bg);
+    border-color: var(--b3-theme-on-background, $c-fg);
+  }
+
+  // ========== 实底外观（`fill`） ==========
+  // 对齐官方 Badge 默认观感：色块 100% 铺底 + 反差文字 + 去描边（外形靠底色本身，不用阴影）
+  // ⚠️ 写在 `.si-tag--fill` 下并把变体类一并带上，选择器为 (0,2,0)：
+  //    上方各变体色是 `&--xxx` 的 (0,1,0)，不抬特异性会被后者压住（仅靠源顺序取胜太脆弱）。
+  &--fill {
+    border-color: transparent;
+
+    &.si-tag--default,
+    &.si-tag--secondary {
+      background: var(--b3-theme-on-surface, $c-fg);
+      color: var(--b3-theme-background, $c-bg);
+    }
+
+    &.si-tag--primary {
+      background: var(--b3-theme-primary, $c-primary);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    &.si-tag--success {
+      background: var(--b3-theme-success, $c-success);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    &.si-tag--warning,
+    &.si-tag--warn {
+      background: var(--b3-theme-warning, $c-warning);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    &.si-tag--danger,
+    &.si-tag--error {
+      background: var(--b3-theme-error, $c-danger);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    &.si-tag--info {
+      background: var(--b3-theme-info, $c-info);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    &.si-tag--contrast {
+      background: var(--b3-theme-on-background, $c-fg);
+      color: var(--b3-theme-background, $c-bg);
+    }
+  }
+
+  // 自定义颜色
+  &--custom-color {
+    &.si-tag--closable {
+      .si-tag__close {
+        color: var(--tag-text-color, inherit);
+      }
+    }
+  }
+
+  // 可关闭
+  &--closable {
+    padding-right: m.$gap-xs; // 6px
+  }
+
+  // 禁用状态
+  &--disabled {
+    opacity: m.$opacity-disabled;
+    cursor: not-allowed;
+  }
+
+  // 图标
+  &__icon {
+    flex-shrink: 0;
+  }
+
+  // 头像（对齐 PrimeVue Chip 的 image）：圆形、固定边长，与档位字号同阶（字号 +2px，同 Message 图标口径）
+  &__image {
+    flex-shrink: 0;
+    width: 14px; // 无对应 Token（默认档 = S 档）
+    height: 14px;
+    border-radius: $r-full;
+    object-fit: cover;
+    display: block;
+  }
+
+  &--xsmall &__image {
+    width: 12px;
+    height: 12px;
+  }
+
+  &--small &__image {
+    width: 14px;
+    height: 14px;
+  }
+
+  &--medium &__image {
+    width: 16px;
+    height: 16px;
+  }
+
+  &--large &__image {
+    width: 18px;
+    height: 18px;
+  }
+
+  // 带头像时收紧左内边距：圆形头像紧贴左缘更接近官方 Chip 的观感（内边距减半）
+  &--has-image {
+    padding-left: $s-px3;
+  }
+
+  // 内容
+  &__content {
+    flex: 1;
+  }
+
+  // 关闭按钮
+  &__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: $s-4; // 16px
+    height: $s-4;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    margin-left: $s-px2; // 2px 无对应 Token
+    color: inherit;
+    opacity: m.$opacity-muted;
+    border-radius: $r-sm;
+
+    &:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.05);
+    }
+  }
+
+  &--disabled &__close {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}

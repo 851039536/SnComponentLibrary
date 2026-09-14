@@ -1,0 +1,135 @@
+// ========== Badge.scss ==========
+@use './_mixins.scss' as m;
+@use '../kit/variables.scss' as *;
+
+.si-badge {
+  display: inline-flex;
+  position: relative;
+  vertical-align: middle;
+
+  &__content {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(0, 0);
+    white-space: nowrap;
+    font-family: $ff-zh;
+    font-weight: $fw-medium;
+    z-index: m.$z-local-overlay;
+
+    // 尺寸变体（字号阶梯：XS 10px / S·M·L 12px，最小可读字号受 $t-2xs 约束）
+    &--xsmall {
+      height: $s-3; // 12px
+      padding: 0 3px; // 无对应 Token
+      font-size: $t-2xs; // XS 档字号阶梯：10px
+      line-height: $lh-tight;
+      min-width: $s-3;
+    }
+
+    &--small {
+      height: $s-4; // 16px
+      padding: 0 $s-px3; // 3px（原 5px，减 2px）
+      font-size: $t-xs; // S 档：12px
+      line-height: $lh-tight;
+      min-width: $s-4;
+    }
+
+    &--medium {
+      height: $s-5; // 20px
+      padding: 0 $s-1; // 4px（原 6px，减 2px）
+      font-size: $t-xs; // M 档：12px
+      line-height: $lh-tight;
+      min-width: $s-5;
+    }
+
+    &--large {
+      height: $s-6; // 24px
+      padding: 0 m.$gap-xs; // 6px（原 8px，减 2px）
+      font-size: $t-xs; // L 档：12px
+      line-height: $lh-tight;
+      min-width: $s-6;
+    }
+
+    // 圆点样式
+    &--dot {
+      width: $s-2; // 8px
+      height: $s-2;
+      min-width: $s-2;
+      padding: 0;
+      border-radius: $r-full;
+    }
+
+    // 默认样式（非圆点）— Codex 边框策略（替代原 box-shadow: 0 0 0 1px）
+    &:not(.si-badge__content--dot) {
+      border-radius: $r-full;
+      border: 1px solid var(--b3-theme-background, $c-bg);
+    }
+
+    // 颜色变体
+    &--default {
+      background: var(--b3-theme-on-surface, $c-fg);
+      color: var(--b3-theme-background, $c-bg);
+    }
+
+    &--primary {
+      background: var(--b3-theme-primary, $c-danger);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    &--success {
+      background: var(--b3-theme-success, $c-success);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    &--warning {
+      background: var(--b3-theme-warning, $c-warning);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    &--danger {
+      background: var(--b3-theme-error, $c-danger);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    &--info {
+      background: var(--b3-theme-info, $c-info);
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    // 自定义颜色
+    &--custom-color {
+      color: var(--b3-theme-on-primary, $c-bg);
+    }
+
+    // 位置变体
+    .si-badge--top-right & {
+      top: 0;
+      right: 0;
+      transform: translate(50%, -50%);
+    }
+
+    .si-badge--top-left & {
+      top: 0;
+      left: 0;
+      transform: translate(-50%, -50%);
+    }
+
+    .si-badge--bottom-right & {
+      bottom: 0;
+      right: 0;
+      transform: translate(50%, 50%);
+    }
+
+    .si-badge--bottom-left & {
+      bottom: 0;
+      left: 0;
+      transform: translate(-50%, 50%);
+    }
+
+    // 内部文本
+    &__inner {
+      display: block;
+    }
+  }
+}

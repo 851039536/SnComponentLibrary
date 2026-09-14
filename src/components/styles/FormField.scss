@@ -1,0 +1,77 @@
+// ========== FormField.scss ==========
+@use './_mixins.scss' as m;
+@use '../kit/variables.scss' as *;
+
+.si-form-field {
+  &__label {
+    display: flex;
+    align-items: center;
+    margin-bottom: $s-1;
+    font-weight: $fw-medium;
+    color: var(--b3-theme-on-background, $c-fg);
+    font-family: $ff-zh;
+
+    &--xsmall {
+      font-size: $t-2xs;
+    }
+
+    &--small {
+      font-size: $t-xs;
+    }
+
+    &--medium {
+      font-size: $t-sm;
+    }
+
+    &--large {
+      font-size: $t-base;
+    }
+  }
+
+  &__required {
+    color: var(--b3-theme-primary, $c-danger);
+    margin-left: 2px; // 2px 无对应 Token，保留
+  }
+
+  &__hint {
+    margin-top: $s-1;
+    font-size: $t-xs;
+    color: var(--b3-theme-secondary, $c-muted);
+
+    &--error {
+      color: var(--b3-theme-error, $c-danger);
+    }
+  }
+
+  &__count {
+    margin-top: $s-1;
+    font-size: $t-xs;
+    color: var(--b3-theme-secondary, $c-muted);
+    text-align: right;
+  }
+
+  // 利用 label 的 size 变体选择器缩放 hint/count/required
+  &__label--xsmall ~ &__hint,
+  &__label--xsmall ~ &__count {
+    margin-top: 0;
+    font-size: $t-2xs;
+  }
+
+  &__label--small ~ &__hint,
+  &__label--small ~ &__count {
+    margin-top: $s-1;
+    font-size: $t-2xs;
+  }
+
+  &__label--medium ~ &__hint,
+  &__label--medium ~ &__count {
+    margin-top: $s-1;
+    font-size: $t-xs;
+  }
+
+  &__label--large ~ &__hint,
+  &__label--large ~ &__count {
+    margin-top: $s-2;
+    font-size: $t-xs;
+  }
+}
