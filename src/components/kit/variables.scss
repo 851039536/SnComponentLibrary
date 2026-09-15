@@ -15,6 +15,11 @@
 // ========== 颜色（$c-*） ==========
 // 用途：作为思源 CSS 变量（--b3-theme-*）的 fallback 值。
 // 思源运行时必提供主题变量，fallback 仅作防御性兜底，基本不实际生效。
+//
+// ⚠️ fallback 只有**一套亮色值**，无法随明暗主题切换。因此正确的优先级是：
+//     宿主主题变量 > kit/theme.ts 注入的明暗变量 > 这里的 SCSS fallback。
+//   只有在「宿主无主题 且 theme.ts 未注入」时才会落到 fallback，属于最后兜底。
+//   新增组件时**优先**写 var(--b3-theme-x)，不要直接写 $c-*。
 
 // 中性色
 $c-fg: hsl(24 10% 5%);            // 深前景/正文文本
@@ -24,14 +29,23 @@ $c-surface: hsl(45 5% 96%);       // 浅灰表面（卡片/面板背景）
 $c-border: hsl(30 6% 88%);        // 边框/分割线
 
 // 语义色
-$c-primary: hsl(24 9% 10%);           // 主色（暖黑）
-$c-secondary: hsl(45 5% 96%);         // 次色（暖灰）
-$c-accent: hsl(35 85% 55%);           // 强调（琥珀金）
-$c-danger: hsl(0 72% 51%);            // 危险/错误（红）
-$c-danger-bright: hsl(0 84.2% 60.2%); // 亮红（错误提示文字/高亮背景）
-$c-success: hsl(142 76% 36%);         // 成功（绿）
-$c-warning: hsl(35 90% 50%);          // 警告（琥珀黄）
-$c-info: hsl(217 91% 60%);            // 信息（蓝）
+//
+// ⚠️ $c-primary 是**暖黑**（旧 Codex 设计语言的主色），与 theme.ts 注入的
+//    品牌蓝（--b3-theme-primary = #2563eb）**不是同一个色**。
+//    因此 `var(--b3-theme-primary, $c-primary)` 这种写法在兜底路径下会渲染成黑色，
+//    而不是蓝色 —— 语义上不匹配。历史上有 64 处更严重：误写成 $c-danger（红）。
+//
+//    新代码请用 $c-primary-fallback（品牌蓝的兜底值），与 theme.ts 对齐：
+//      color: var(--b3-theme-primary, $c-primary-fallback);
+$c-primary-fallback: #2563eb; // 与 theme.ts 的 --b3-theme-primary 完全一致（直接写 hex，避免 HSL 取整偏差）
+$c-primary: hsl(24 9% 10%);            // 主色（暖黑）—— 历史命名，勿用于新代码
+$c-secondary: hsl(45 5% 96%);          // 次色（暖灰）
+$c-accent: hsl(35 85% 55%);            // 强调（琥珀金）
+$c-danger: hsl(0 72% 51%);             // 危险/错误（红）
+$c-danger-bright: hsl(0 84.2% 60.2%);  // 亮红（错误提示文字/高亮背景）
+$c-success: hsl(142 76% 36%);          // 成功（绿）
+$c-warning: hsl(35 90% 50%);           // 警告（琥珀黄）
+$c-info: hsl(217 91% 60%);             // 信息（蓝）
 
 // ========== 字体族（$ff-*） ==========
 

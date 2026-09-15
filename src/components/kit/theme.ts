@@ -21,10 +21,33 @@ const STYLE_ID = "siyuan-kit-default-theme"
 /** 层叠层名（@layer 内的声明永远输给宿主的未分层声明） */
 const LAYER_NAME = "siyuan-kit-theme"
 
+/**
+ * ## 中性色阶梯（改 surface 系列前必读）
+ *
+ * 组件把 surface 系列当作**「离背景由近到远」的单调阶梯**使用：
+ *
+ *   surface         —— 卡片/面板底（最贴近背景）
+ *   surface-light   —— 输入框底、按钮按下态（比 surface 再远一档）
+ *   surface-lighter —— hover 态、分隔/描边底（更远）
+ *   border-color    —— 边框（最远，必须与上一档可区分）
+ *
+ * 因此**明暗两套必须同序**。实测曾出现暗色下 `surface-light`(#232325) 比
+ * `surface`(#2c2c2e) 更暗，导致「越往外层越亮」的直觉在暗色下反转，
+ * 输入框/按下态看起来比卡片底更「凹」；同时暗色 `border` 与
+ * `surface-lighter` 取了同一个值(#3a3a3c)，边框与 hover 底完全无法区分。
+ *
+ * 校验方法（相邻档对比度应 >1.05 才肉眼可辨，且文字对背景需 >=4.5 达 WCAG AA）：
+ *   - 明色 bg→surface→light→lighter→border 逐档升高 ✓
+ *   - 暗色同序逐档升高 ✓
+ * 修改后请跑 `npm test`（tests/theme.test.ts 会断言该不变量）。
+ */
+
 /** 明色默认值（键不含 -- 前缀）。两个 *-rgb 变量必须是逗号分隔：被 rgba(var(--x), a) 消费 */
 const LIGHT_VARS: Record<string, string> = {
-  "b3-theme-primary": "#3b82f6",
-  "b3-theme-primary-rgb": "59, 130, 246",
+  // 主色：白字对其对比度 5.17 达 WCAG AA（原 #3b82f6 仅 3.68，白字按钮不达标）。
+  // 与 info 保持同色（组件库语义上「主色=信息色」，见 variables.scss 的 $c-info）。
+  "b3-theme-primary": "#2563eb",
+  "b3-theme-primary-rgb": "37, 99, 235",
   "b3-theme-on-primary": "#ffffff",
   "b3-theme-background": "#ffffff",
   "b3-theme-background-rgb": "255, 255, 255",
@@ -41,27 +64,32 @@ const LIGHT_VARS: Record<string, string> = {
   "b3-theme-error": "#ef4444",
   "b3-theme-success": "#10b981",
   "b3-theme-warning": "#f59e0b",
-  "b3-theme-info": "#3b82f6",
+  "b3-theme-info": "#2563eb",
   // 兼容位：原宿主从未定义该变量，组件内有 4 处误用（Tag/Badge），此处与其余错误色对齐
   "b3-theme-destructive": "#ef4444",
 }
 
-/** 暗色默认值（与 LIGHT_VARS 一一对应） */
+/**
+ * 暗色默认值（与 LIGHT_VARS 一一对应）
+ *
+ * ⚠️ 中性色阶梯必须与明色**同序**（见下方「中性色阶梯」说明），否则暗色下
+ * 组件的层级语义会错位。修改 surface 系列前请先读那段注释。
+ */
 const DARK_VARS: Record<string, string> = {
   "b3-theme-primary": "#60a5fa",
   "b3-theme-primary-rgb": "96, 165, 250",
   "b3-theme-on-primary": "#0b1220",
   "b3-theme-background": "#1c1c1e",
   "b3-theme-background-rgb": "28, 28, 30",
-  "b3-theme-surface": "#2c2c2e",
-  "b3-theme-surface-light": "#232325",
+  "b3-theme-surface": "#242426",
+  "b3-theme-surface-light": "#2c2c2e",
   "b3-theme-surface-lighter": "#3a3a3c",
   "b3-theme-hover": "rgba(255, 255, 255, 0.08)",
   "b3-theme-on-background": "#ededed",
   "b3-theme-on-surface": "#ededed",
   "b3-theme-secondary": "#9a9a9a",
-  "b3-border-color": "#3a3a3c",
-  "b3-theme-border": "#3a3a3c",
+  "b3-border-color": "#3f3f42",
+  "b3-theme-border": "#3f3f42",
   "b3-theme-outline": "#48484a",
   "b3-theme-error": "#f87171",
   "b3-theme-success": "#34d399",
